@@ -12,7 +12,6 @@ var TEST_HOME_DIR, _ = os.UserHomeDir()
 
 func Test_createConfigFile(t *testing.T) {
 	const token = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
 	type args struct {
 		config *AppFlags
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -23,7 +24,7 @@ type Repository struct {
 }
 
 func createGitServerHook(repo *Repository, config *AppConfig) error {
-	url := filepath.Join("https://api.github.com/repos", repo.Owner, repo.Name, "hooks")
+	url := "https://api.github.com/repos" + filepath.Join(repo.Owner, repo.Name, "hooks")
 	webhook := Webhook{
 		Name:   "gitfresh",
 		Active: true,
@@ -56,7 +57,7 @@ func createGitServerHook(repo *Repository, config *AppConfig) error {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
 		fmt.Printf("Error al crear el webhook. Código de estado: %d\n", resp.StatusCode)
-		return err
+		return errors.New("creating webhook via http, response with " + resp.Status)
 	}
 	fmt.Println("Webhook creado con éxito.")
 	return nil
