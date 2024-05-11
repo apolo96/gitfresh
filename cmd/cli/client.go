@@ -4,7 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
+	"io"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -24,41 +25,45 @@ type Repository struct {
 }
 
 func createGitServerHook(repo *Repository, config *AppConfig) error {
-	url := "https://api.github.com/repos" + filepath.Join(repo.Owner, repo.Name, "hooks")
+	url := "https://api.github.com/repos/" + filepath.Join(repo.Owner, repo.Name, "hooks")
 	webhook := Webhook{
-		Name:   "gitfresh",
+		Name:   "web",
 		Active: true,
 		Events: []string{"push"},
 		Config: map[string]string{
 			"url":          config.TunnelDomain,
-			"content_type": "application/json",
+			"content_type": "json",
 			"secret":       config.GitHookSecret,
+			"insecure_ssl": "0",
 		},
 	}
 	jsonData, err := json.Marshal(webhook)
 	if err != nil {
-		fmt.Println("Error al codificar la repouración del webhook:", err)
+		slog.Error(err.Error())
 		return err
 	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		fmt.Println("Error al crear la solicitud HTTP:", err)
+		slog.Error(err.Error())
 		return err
 	}
-	req.Header.Set("Authorization", "token "+config.GitServerToken)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+config.GitServerToken)
+	req.Header.Set("Accept", "*/*")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
 	client := &http.Client{Timeout: time.Second * 20}
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Error al realizar la solicitud HTTP:", err)
+		slog.Error(err.Error())
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
-		fmt.Printf("Error al crear el webhook. Código de estado: %d\n", resp.StatusCode)
+		slog.Info(string(jsonData))
+		slog.Info(url)
+		b, _ := io.ReadAll(resp.Body)
+		slog.Info(string(b))
 		return errors.New("creating webhook via http, response with " + resp.Status)
 	}
-	fmt.Println("Webhook creado con éxito.")
 	return nil
 }

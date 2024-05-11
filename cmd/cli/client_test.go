@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func Test_createGitServerHook(t *testing.T) {
 	type args struct {
@@ -13,18 +16,18 @@ func Test_createGitServerHook(t *testing.T) {
 		wantErr bool
 	}{
 		{
-			name: "creating webhook failed",
+			name: "creating webhook success",
 			args: args{
 				&Repository{
 					Owner: "apolo96",
-					Name:  "meataudio",
+					Name:  "docker-php-7.4-nginx-dev",
 				},
 				&AppConfig{
-					TunnelToken:    "12312322",
-					TunnelDomain:   "wwww.apolo906.com",
-					GitServerToken: "090909090",
+					TunnelToken:    os.Getenv("NGROK_TOKEN"),
+					TunnelDomain:   os.Getenv("NGROK_DOMAIN"),
+					GitServerToken: os.Getenv("GITHUB_TOKEN"),
 					GitWorkDir:     "",
-					GitHookSecret:  "4939292",
+					GitHookSecret:  "GITFRESH010231",
 				},
 			},
 			wantErr: false,
