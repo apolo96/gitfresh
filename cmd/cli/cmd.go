@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type AppFlags struct {
@@ -14,6 +15,24 @@ type AppFlags struct {
 	TunnelDomain   string `name:"TunnelDomain" description:"Actually gitfresh support only Ngrok Internet Tunnel.\nYou can get a Custom Domain going to https://dashboard.ngrok.com/cloud-edge/domains \n"`
 	GitServerToken string `name:"GitServerToken" description:"Actually gitfresh support only github.com.\nYou can get a Toke going to https://github.com \n"`
 	GitWorkDir     string `name:"GitWorkDir" description:"Your Git working directory where you have all repositories. For example: /users/lio/code . Type the absolute path.\nIf you don't enter a GitWorkDir, then GitFresh assumes that your GitWorkDir is your current directory. \n"`
+}
+
+func startCmd(flags *struct{}) error {
+	ok, err := isAgentRunning()
+	if ok && err == nil {
+		println("GitFresh Agent is running")
+		return nil
+	}
+	cmd := exec.Command("./api")
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	println("Loading GitFresh Agent...")
+	time.Sleep(time.Second * 2)
+	// check agent status via tunnel
+	slog.Info("gitfresh agent process", "id", cmd.Process.Pid)
+	saveAgentPID(cmd.Process.Pid)
+	return nil
 }
 
 func configCmd(flags *AppFlags) error {
