@@ -12,8 +12,9 @@ import (
 
 /* FlatFile */
 const APP_CONFIG_FILE_NAME = "config.json"
-const APP_CONFIG_FOLDER = ".gitfresh"
+const APP_FOLDER = ".gitfresh"
 const APP_REPOS_FILE_NAME = "repositories.json"
+const APP_AGENT_FILE = "agent.txt"
 
 type AppConfig struct {
 	TunnelToken    string
@@ -37,7 +38,7 @@ func createConfigFile(config *AppFlags) (file string, err error) {
 		slog.Error(err.Error())
 		return file, err
 	}
-	path := filepath.Join(dirname, APP_CONFIG_FOLDER)
+	path := filepath.Join(dirname, APP_FOLDER)
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		println("error making config folder")
 		slog.Error(err.Error())
@@ -61,7 +62,7 @@ func readConfigFile() (*AppConfig, error) {
 	if err != nil {
 		return config, err
 	}
-	path := filepath.Join(dirname, APP_CONFIG_FOLDER)
+	path := filepath.Join(dirname, APP_FOLDER)
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		_ = os.Mkdir(path, os.ModePerm)
 	}
@@ -129,7 +130,7 @@ func saveReposMetaData(repos []*Repository) (file string, err error) {
 		slog.Error(err.Error())
 		return file, err
 	}
-	path := filepath.Join(dirname, APP_CONFIG_FOLDER)
+	path := filepath.Join(dirname, APP_FOLDER)
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		println("error making config folder")
 		slog.Error(err.Error())

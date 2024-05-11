@@ -31,7 +31,7 @@ func Test_createConfigFile(t *testing.T) {
 					GitWorkDir:     filepath.Join(TEST_HOME_DIR, "code"),
 				},
 			},
-			wantFile: filepath.Join(TEST_HOME_DIR, APP_CONFIG_FOLDER, APP_CONFIG_FILE_NAME),
+			wantFile: filepath.Join(TEST_HOME_DIR, APP_FOLDER, APP_CONFIG_FILE_NAME),
 			wantErr:  false,
 		},
 	}
@@ -98,7 +98,7 @@ func Test_saveReposMetaData(t *testing.T) {
 	type args struct {
 		repos []*Repository
 	}
-	reposFilePath := filepath.Join(TEST_HOME_DIR, APP_CONFIG_FOLDER, APP_REPOS_FILE_NAME)
+	reposFilePath := filepath.Join(TEST_HOME_DIR, APP_FOLDER, APP_REPOS_FILE_NAME)
 	tests := []struct {
 		name     string
 		args     args
