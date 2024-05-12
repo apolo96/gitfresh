@@ -14,13 +14,48 @@ import (
 )
 
 func main() {
-	if err := run(context.Background()); err != nil {
+	if err := run(); err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(ctx context.Context) error {
+func run() (e error) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	ch := make(chan string)
+	go func() {
+		if err := tunnel(ctx, ch); err != nil {
+			cancel()
+			slog.Error(err.Error())
+			e = err
+		}
+	}()
+	go func() {
+		if err := localserver(ctx, ch); err != nil {
+			cancel()
+			slog.Error(err.Error())
+			e = err
+		}
+	}()
+	<-ctx.Done()
+	println("Stop Service by error cause")
+	return e
+}
+
+func localserver(ctx context.Context, ch <-chan string) error {
+	url := <-ch
+	server := &http.Server{
+		Addr: "127.0.0.1:9191",
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Service StatusOK On " + url))
+		}),
+	}
+	slog.Info("LocalServer Listening on " + server.Addr)
+	return server.ListenAndServe()
+}
+
+func tunnel(ctx context.Context, ch chan<- string) error {
 	secret := os.Getenv("GITHUB_HOOK_SECRET")
 	slog.Debug("git provider webhook secret", "secret", secret)
 	listener, err := ngrok.Listen(ctx,
@@ -33,7 +68,8 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	slog.Info("Listening on " + listener.URL())
+	ch <- listener.URL()
+	slog.Info("Tunnel Listening on " + listener.URL())
 	return http.Serve(listener, http.HandlerFunc(handler))
 }
 
