@@ -67,14 +67,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		"payload form data",
 		"branch", p.Ref,
 		"repository", p.Repository.Name,
-		"last_commit", p.Commit,
+		"last_commit", p.Commit[:7],
 	)
 	gitPullCmd("/Users/laniakea/code/", p.Repository.Name, p.Ref)
 	w.WriteHeader(http.StatusOK)
 }
 
 func gitPullCmd(workdir, repoName, branch string) (err error) {
-	p, err := exec.Command("which", "git").CombinedOutput()
+	p, err := exec.LookPath("git")
 	if err != nil {
 		slog.Error("which git path", "error", err.Error())
 		return err
