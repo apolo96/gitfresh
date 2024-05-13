@@ -1,30 +1,61 @@
-package main
+package gitfresh
 
 import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
 	"time"
 )
 
-/* Http Client */
-type Webhook struct {
-	Name   string            `json:"name"`
-	Active bool              `json:"active"`
-	Events []string          `json:"events"`
-	Config map[string]string `json:"config"`
+func IsAgentRunning() (bool, error) {
+	dir, _ := os.UserHomeDir()
+	path := filepath.Join(dir, APP_FOLDER, APP_AGENT_FILE)
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false, err
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Printf("Error al leer el archivo PID: %v\n", err)
+		return false, err
+	}
+	pidstr := strings.TrimSpace(string(content))
+	if pidstr == "" {
+		return false, err
+	}
+	pid, err := strconv.Atoi(pidstr)
+	if err != nil {
+		fmt.Println("Error during conversion")
+		return false, err
+	}
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false, err
+	}
+	err = process.Signal(os.Signal(syscall.Signal(0)))
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
-type Repository struct {
-	Owner string
-	Name  string
+func SaveAgentPID(pid int) error {
+	pidStr := fmt.Sprint(pid)
+	dir, _ := os.UserHomeDir()
+	path := filepath.Join(dir, APP_FOLDER, APP_AGENT_FILE)
+	return os.WriteFile(path, []byte(pidStr), 0644)
 }
 
-func createGitServerHook(repo *Repository, config *AppConfig) error {
+func CreateGitServerHook(repo *Repository, config *AppConfig) error {
 	url := "https://api.github.com/repos/" + filepath.Join(repo.Owner, repo.Name, "hooks")
 	webhook := Webhook{
 		Name:   "web",

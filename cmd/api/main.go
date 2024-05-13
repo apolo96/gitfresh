@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -32,7 +33,7 @@ func run() (e error) {
 		}
 	}()
 	go func() {
-		if err := localserver(ctx, ch); err != nil {
+		if err := localserver(ch); err != nil {
 			cancel()
 			slog.Error(err.Error())
 			e = err
@@ -43,12 +44,14 @@ func run() (e error) {
 	return e
 }
 
-func localserver(ctx context.Context, ch <-chan string) error {
+func localserver(ch <-chan string) error {
 	url := <-ch
 	server := &http.Server{
 		Addr: "127.0.0.1:9191",
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Service StatusOK On " + url))
+			data := fmt.Sprintf(`{"api_version":"1.0.0", "tunnel_domain":"%s"}`, url)
+			w.Header().Set("Content-type", "application/json")
+			w.Write([]byte(data))
 		}),
 	}
 	slog.Info("LocalServer Listening on " + server.Addr)

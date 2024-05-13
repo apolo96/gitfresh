@@ -1,4 +1,4 @@
-package main
+package gitfresh
 
 import (
 	"os"
@@ -35,7 +35,7 @@ func Test_createGitServerHook(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := createGitServerHook(tt.args.repo, tt.args.config); (err != nil) != tt.wantErr {
+			if err := CreateGitServerHook(tt.args.repo, tt.args.config); (err != nil) != tt.wantErr {
 				t.Errorf("createGitServerHook() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})

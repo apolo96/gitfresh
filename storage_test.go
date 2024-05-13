@@ -1,4 +1,4 @@
-package main
+package gitfresh
 
 import (
 	"os"
@@ -37,7 +37,7 @@ func Test_createConfigFile(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotFile, err := createConfigFile(tt.args.config)
+			gotFile, err := CreateConfigFile(tt.args.config)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("createConfigFile() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -82,7 +82,7 @@ func Test_scanRepositories(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := scanRepositories(tt.args.workdir, tt.args.gitProvider)
+			got, err := ScanRepositories(tt.args.workdir, tt.args.gitProvider)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("scanRepositories() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -125,7 +125,7 @@ func Test_saveReposMetaData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotFile, err := saveReposMetaData(tt.args.repos)
+			gotFile, err := SaveReposMetaData(tt.args.repos)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("saveReposMetaData() error = %v, wantErr %v", err, tt.wantErr)
 				return

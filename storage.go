@@ -1,4 +1,4 @@
-package main
+package gitfresh
 
 import (
 	"encoding/json"
@@ -10,21 +10,14 @@ import (
 	"strings"
 )
 
-/* FlatFile */
-const APP_CONFIG_FILE_NAME = "config.json"
-const APP_FOLDER = ".gitfresh"
-const APP_REPOS_FILE_NAME = "repositories.json"
-const APP_AGENT_FILE = "agent.txt"
-
-type AppConfig struct {
+type AppFlags struct {
 	TunnelToken    string
 	TunnelDomain   string
 	GitServerToken string
 	GitWorkDir     string
-	GitHookSecret  string
 }
 
-func createConfigFile(config *AppFlags) (file string, err error) {
+func CreateConfigFile(config *AppFlags) (file string, err error) {
 	dirname, err := os.UserHomeDir()
 	if err != nil {
 		println("error getting user home directory")
@@ -56,7 +49,7 @@ func createConfigFile(config *AppFlags) (file string, err error) {
 	return file, nil
 }
 
-func readConfigFile() (*AppConfig, error) {
+func ReadConfigFile() (*AppConfig, error) {
 	dirname, err := os.UserHomeDir()
 	config := &AppConfig{}
 	if err != nil {
@@ -76,22 +69,20 @@ func readConfigFile() (*AppConfig, error) {
 	return config, nil
 }
 
-func scanRepositories(workdir string, gitProvider string) ([]Repository, error) {
+func ScanRepositories(workdir string, gitProvider string) ([]Repository, error) {
 	repos := []Repository{}
-	files, err := os.ReadDir(workdir)
+	dirs, err := os.ReadDir(workdir)
 	if err != nil {
 		slog.Error(err.Error())
 		return repos, err
 	}
-	for _, f := range files {
+	for _, f := range dirs {
 		if f.IsDir() {
 			path := filepath.Join(workdir, f.Name())
-			err := os.Chdir(path)
-			if err != nil {
-				break
-			}
 			git, _ := exec.LookPath("git")
-			url, err := exec.Command(git, "remote", "get-url", "origin").CombinedOutput()
+			c := exec.Command(git, "remote", "get-url", "origin")
+			c.Dir = path
+			url, err := c.CombinedOutput()
 			if err != nil {
 				slog.Info(path)
 				slog.Error("executing git command", "error", err.Error(), "path", git)
@@ -110,13 +101,12 @@ func scanRepositories(workdir string, gitProvider string) ([]Repository, error) 
 				continue
 			}
 			repos = append(repos, Repository{Owner: surl[3], Name: strings.ReplaceAll(surl[4], ".git\n", "")})
-			os.Chdir(workdir)
 		}
 	}
 	return repos, nil
 }
 
-func saveReposMetaData(repos []*Repository) (file string, err error) {
+func SaveReposMetaData(repos []*Repository) (file string, err error) {
 	dirname, err := os.UserHomeDir()
 	if err != nil {
 		println("error getting user home directory")
