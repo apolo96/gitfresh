@@ -1,4 +1,4 @@
-module gitfresh
+module github.com/apolo96/gitfresh
 
 go 1.22.1
 
