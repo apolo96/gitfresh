@@ -16,8 +16,9 @@ func main() {
 
 func run() error {
 	cli := clir.NewCli("gitfresh", "A DX Tool to keep the git repositories updated 😎", "v1.0.0")
-	cli.NewSubCommandFunction("config", "Configure the user integration parameters \n", configCmd)
-	cli.NewSubCommandFunction("init", "Initialise the local agent", initCmd)
-	cli.NewSubCommandFunction("start", "", startcmd)
+	cli.NewSubCommandFunction("config", "Configure the application parameters", configCmd)
+	cli.NewSubCommandFunction("init", "Initialise the workspace and agent", initCmd)
+	cli.NewSubCommandFunction("refresh", "Add new repositories for refreshing", refreshCmd)
+	cli.NewSubCommandFunction("status", "Check status agent", statusCmd)
 	return cli.Run()
 }

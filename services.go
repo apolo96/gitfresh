@@ -10,51 +10,13 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 )
-
-func IsAgentRunning() (bool, error) {
-	dir, _ := os.UserHomeDir()
-	path := filepath.Join(dir, APP_FOLDER, APP_AGENT_FILE)
-	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false, err
-	}
-	content, err := os.ReadFile(path)
-	if err != nil {
-		fmt.Printf("Error al leer el archivo PID: %v\n", err)
-		return false, err
-	}
-	pidstr := strings.TrimSpace(string(content))
-	if pidstr == "" {
-		return false, err
-	}
-	pid, err := strconv.Atoi(pidstr)
-	if err != nil {
-		fmt.Println("Error during conversion")
-		return false, err
-	}
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false, err
-	}
-	err = process.Signal(os.Signal(syscall.Signal(0)))
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-func SaveAgentPID(pid int) error {
-	pidStr := fmt.Sprint(pid)
-	dir, _ := os.UserHomeDir()
-	path := filepath.Join(dir, APP_FOLDER, APP_AGENT_FILE)
-	return os.WriteFile(path, []byte(pidStr), 0644)
-}
 
 func CreateGitServerHook(repo *Repository, config *AppConfig) error {
 	url := "https://api.github.com/repos/" + filepath.Join(repo.Owner, repo.Name, "hooks")
@@ -146,7 +108,7 @@ func DiffRepositories() ([]*Repository, error) {
 	for _, rs := range r {
 		_, ok := result[rs.Name]
 		if ok {
-			repos = append(repos, &rs)
+			repos = append(repos, rs)
 		}
 	}
 	return repos, err
@@ -160,4 +122,98 @@ func WebHookSecret() string {
 		secret[i] = alpha[rand.Intn(len(alpha))]
 	}
 	return string(secret)
+}
+
+/* Agent */
+func IsAgentRunning() (bool, error) {
+	dir, _ := os.UserHomeDir()
+	path := filepath.Join(dir, APP_FOLDER, APP_AGENT_FILE)
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false, err
+	}
+	content, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Printf("Error al leer el archivo PID: %v\n", err)
+		return false, err
+	}
+	pidstr := strings.TrimSpace(string(content))
+	if pidstr == "" {
+		return false, err
+	}
+	pid, err := strconv.Atoi(pidstr)
+	if err != nil {
+		fmt.Println("Error during conversion")
+		return false, err
+	}
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false, err
+	}
+	err = process.Signal(os.Signal(syscall.Signal(0)))
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func SaveAgentPID(pid int) error {
+	pidStr := fmt.Sprint(pid)
+	dir, _ := os.UserHomeDir()
+	path := filepath.Join(dir, APP_FOLDER, APP_AGENT_FILE)
+	return os.WriteFile(path, []byte(pidStr), 0644)
+}
+
+func StartAgent() (int, error) {
+	println("Loading GitFresh Agent...")
+	/* path := exec.LookPath("gitfreshd")
+	cmd := exec.Command(path) */
+	cmd := exec.Command("./api")
+	slog.Info("gitfresh agent process", "id", cmd.Process.Pid)
+	if err := cmd.Start(); err != nil {
+		return 0, err
+	}
+	return cmd.Process.Pid, nil
+}
+
+type Agent struct {
+	ApiVersion   string `json:"api_version"`
+	TunnelDomain string `json:"tunnel_domain"`
+}
+
+func CheckAgentStatus(tick *time.Ticker) (Agent, error) {
+	var agent Agent = Agent{}
+	req, err := http.NewRequest("GET", "http://"+API_AGENT_HOST, &bytes.Buffer{})
+	if err != nil {
+		slog.Error(err.Error())
+		return agent, err
+	}
+	client := &http.Client{}
+	var respBody io.ReadCloser
+	times := 5
+	for {
+		<-tick.C
+		if times <= 0 {
+			return agent, errors.New("timeout checking agent status")
+		}
+		resp, err := client.Do(req)
+		if err != nil {
+			slog.Error(err.Error())
+			continue
+		}
+		if resp.StatusCode == http.StatusOK {
+			respBody = resp.Body
+			tick.Stop()
+			break
+		}
+		times--
+		slog.Error(resp.Status)
+	}
+
+	body, _ := io.ReadAll(respBody)
+	if err := json.Unmarshal(body, &agent); err != nil {
+		slog.Error(err.Error())
+		return agent, err
+	}
+	return agent, nil
 }

@@ -17,7 +17,8 @@ func PromptSecret(label string, required bool) (s string) {
 	for {
 		print("> ")
 		s, _ = r.ReadString('\n')
-		if required && len(s) <= 1 {
+		s = strings.TrimRight(strings.TrimSpace(s), "\n")
+		if required && len(s) < 1 {
 			println("Empty value, please type a real value")
 			continue
 		}
@@ -25,7 +26,7 @@ func PromptSecret(label string, required bool) (s string) {
 
 	}
 	println("")
-	return strings.TrimRight(s, "\n")
+	return s
 }
 
 func PromptConfirm(label string, value string) bool {
@@ -35,8 +36,8 @@ func PromptConfirm(label string, value string) bool {
 	for {
 		print("> ")
 		s, _ := r.ReadString('\n')
-		s = strings.ToLower(strings.TrimSpace(s))
-		if len(s) <= 1 {
+		s = strings.TrimRight(strings.TrimSpace(s), "\n")
+		if len(s) < 1 {
 			println("Empty value, please type a real value")
 			continue
 		}
