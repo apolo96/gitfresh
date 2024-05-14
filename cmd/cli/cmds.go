@@ -39,7 +39,7 @@ func configCmd(flags *AppFlags) error {
 			slog.Error(err.Error())
 			return err
 		}
-		if !PromptConfirm("Type Y/N to confirm", flags.GitWorkDir) {
+		if !PromptConfirm("Type Y/N to confirm", workdir) {
 			workdir = PromptSecret("Type the GitWorkDir:", true)
 		}
 		flags.GitWorkDir = workdir
@@ -116,7 +116,7 @@ func initCmd(flags *struct{ Verbose bool }) error {
 	}
 	/* Status check */
 	println("Check GitFresh Agent Status...")
-	req, err := http.NewRequest("GET", "http://127.0.0.1:9191", &bytes.Buffer{})
+	req, err := http.NewRequest("GET", "http://"+gitfresh.API_AGENT_HOST, &bytes.Buffer{})
 	if err != nil {
 		slog.Error(err.Error())
 		return err
