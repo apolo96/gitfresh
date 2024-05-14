@@ -92,9 +92,61 @@ func CreateGitServerHook(repo *Repository, config *AppConfig) error {
 	if resp.StatusCode != http.StatusCreated {
 		slog.Info(string(jsonData))
 		slog.Info(url)
-		b, _ := io.ReadAll(resp.Body)
-		slog.Info(string(b))
+		rb, _ := io.ReadAll(resp.Body)
+		slog.Info(string(rb))
+		if resp.StatusCode == http.StatusUnprocessableEntity {
+			var errResponse struct {
+				Message string `json:"message"`
+				Errors  []struct {
+					Resource string `json:"resource"`
+					Code     string `json:"code"`
+					Message  string `json:"message"`
+				}
+				DocumentationURL string `json:"documentation_url"`
+			}
+			err := json.Unmarshal(rb, &errResponse)
+			if err != nil {
+				slog.Error(err.Error())
+			}
+			for _, e := range errResponse.Errors {
+				if e.Resource == "Hook" {
+					if strings.Contains(e.Message, "already exists") {
+						slog.Info(e.Message, "repo", repo.Name)
+						return nil
+					}
+				}
+			}
+		}
 		return errors.New("creating webhook via http, response with " + resp.Status)
 	}
 	return nil
+}
+
+func DiffRepositories() ([]*Repository, error) {
+	/* Storage */
+	r, _ := ScanRepositories("", "")
+	var data []map[string]any
+	repos := []*Repository{}
+	b, err := ListRepository()
+	if err != nil {
+		return repos, err
+	}
+	fmt.Println(string(b))
+	if err := json.Unmarshal(b, &data); err != nil {
+		slog.Error(err.Error())
+		return repos, err
+	}
+	result := make(map[string]struct{})
+	for _, v := range data {
+		result[v["Name"].(string)] = struct{}{}
+	}
+
+	fmt.Println(data)
+	for _, rs := range r {
+		_, ok := result[rs.Name]
+		if ok {
+			repos = append(repos, &rs)
+		}
+	}
+	return repos, err
 }

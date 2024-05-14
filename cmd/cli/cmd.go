@@ -80,10 +80,6 @@ func initCmd(flags *struct{ Verbose bool }) error {
 		return err
 	}
 	repos, err := gitfresh.ScanRepositories(config.GitWorkDir, "github.com")
-	/*
-	*	Read repos from repositories.json
-	*
-	 */
 	if err != nil {
 		slog.Error(err.Error())
 		return err
@@ -100,10 +96,6 @@ func initCmd(flags *struct{ Verbose bool }) error {
 	}
 	/* Start Agent */
 	ok, err := gitfresh.IsAgentRunning()
-	var agent struct {
-		ApiVersion   string `json:"api_version"`
-		TunnelDomain string `json:"tunnel_domain"`
-	}
 	tick := time.NewTicker(time.Microsecond)
 	if !ok && err != nil {
 		println("Loading GitFresh Agent...")
@@ -144,6 +136,10 @@ func initCmd(flags *struct{ Verbose bool }) error {
 		times--
 		slog.Error(resp.Status)
 	}
+	var agent struct {
+		ApiVersion   string `json:"api_version"`
+		TunnelDomain string `json:"tunnel_domain"`
+	}
 	body, _ := io.ReadAll(respBody)
 	if err := json.Unmarshal(body, &agent); err != nil {
 		slog.Error(err.Error())
@@ -152,7 +148,7 @@ func initCmd(flags *struct{ Verbose bool }) error {
 	println("GitFresh Agent is running")
 	if config.TunnelDomain == "" {
 		config.TunnelDomain = agent.TunnelDomain
-		// write config file
+		//gitfresh.CreateConfigFile(config)
 	}
 	fRepos := []*gitfresh.Repository{}
 	for i, r := range repos {
@@ -170,7 +166,7 @@ func initCmd(flags *struct{ Verbose bool }) error {
 	}
 	for _, r := range fRepos {
 		url := fmt.Sprintf("https://github.com/apolo96/%s/settings/hooks", r.Name)
-		fmt.Printf("Owner: %-10s | Name: %-10s\n | URL: %-10s\n", r.Owner, r.Name, url)
+		fmt.Printf("Repository: %-30s | URL: %-20s\n", r.Name, url)
 	}
 	return nil
 }
