@@ -10,14 +10,9 @@ import (
 	"strings"
 )
 
-type AppFlags struct {
-	TunnelToken    string
-	TunnelDomain   string
-	GitServerToken string
-	GitWorkDir     string
-}
 
-func CreateConfigFile(config *AppFlags) (file string, err error) {
+
+func CreateConfigFile(config *AppConfig) (file string, err error) {
 	dirname, err := os.UserHomeDir()
 	if err != nil {
 		println("error getting user home directory")

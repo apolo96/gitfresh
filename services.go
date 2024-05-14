@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -149,4 +150,14 @@ func DiffRepositories() ([]*Repository, error) {
 		}
 	}
 	return repos, err
+}
+
+func WebHookSecret() string {
+	const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+	secret := make([]byte, 10)
+	for i := range secret {
+		secret[i] = alpha[rand.Intn(len(alpha))]
+	}
+	return string(secret)
 }
