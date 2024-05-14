@@ -7,6 +7,11 @@ import (
 	"path/filepath"
 )
 
+type FlatFiler interface {
+	Write(data []byte) (n int, err error)
+	Read() (n []byte, err error)
+}
+
 type FlatFile struct {
 	Name string
 	Path string
@@ -23,16 +28,18 @@ func (f *FlatFile) Write(data []byte) (n int, err error) {
 		return 0, err
 	}
 	slog.Info("config file created successfully")
-	return len(p), nil
+	return len(data), nil
 }
 
 func (f *FlatFile) Read() (n []byte, err error) {
 	path := filepath.Join(f.Path, f.Name)
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		slog.Info("creating directory")
 		_ = os.Mkdir(path, os.ModePerm)
 	}
 	file, err := os.ReadFile(path)
 	if err != nil {
+		slog.Error(err.Error())
 		return []byte{}, err
 	}
 	return file, nil
