@@ -25,13 +25,13 @@ type AppFlags struct {
 
 func configCmd(flags *AppFlags) error {
 	if flags.TunnelToken == "" {
-		flags.TunnelToken = PromptSecret("Type the TunnelToken:", true)
+		flags.TunnelToken = PromptSecret("Type the TunnelToken (Ngrok):", true)
 	}
 	if flags.GitServerToken == "" {
-		flags.GitServerToken = PromptSecret("Type the GitServerToken:", true)
+		flags.GitServerToken = PromptSecret("Type the GitServerToken (Github):", true)
 	}
 	if flags.TunnelDomain == "" {
-		flags.TunnelDomain = PromptSecret("Type the TunnelDomain:", false)
+		flags.TunnelDomain = PromptSecret("Type the TunnelDomain (Ngrok):", false)
 	}
 	if flags.GitWorkDir == "" {
 		workdir, err := os.Getwd()
