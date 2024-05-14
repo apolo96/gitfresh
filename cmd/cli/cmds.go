@@ -1,13 +1,9 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -86,17 +82,14 @@ func initCmd(flags *struct{ Verbose bool }) error {
 	if err != nil {
 		return err
 	}
-	repos, err := gitfresh.ScanRepositories(config.GitWorkDir, "github.com")
+	repos, err := gitfresh.ScanRepositories(config.GitWorkDir, gitfresh.APP_GIT_PROVIDER)
 	if err != nil {
 		slog.Error(err.Error())
 		return err
 	}
-	if flags.Verbose {
-		println("Repositories Scaned")
-		for _, r := range repos {
-			fmt.Printf("Owner: %-20s | Name: %-20s\n", r.Owner, r.Name)
-		}
-	}
+
+	println("Discovery Repositories")
+	renderRepos(repos)
 	if len(repos) < 1 {
 		println("The scanner didn't find available repositories")
 		return nil
@@ -105,51 +98,17 @@ func initCmd(flags *struct{ Verbose bool }) error {
 	ok, err := gitfresh.IsAgentRunning()
 	tick := time.NewTicker(time.Microsecond)
 	if !ok && err != nil {
-		println("Loading GitFresh Agent...")
-		cmd := exec.Command("./api")
-		if err := cmd.Start(); err != nil {
+		pid, err := gitfresh.StartAgent()
+		if err != nil {
 			return err
 		}
-		slog.Info("gitfresh agent process", "id", cmd.Process.Pid)
-		gitfresh.SaveAgentPID(cmd.Process.Pid)
+		gitfresh.SaveAgentPID(pid)
 		tick.Reset(time.Second * 3)
 	}
 	/* Status check */
 	println("Check GitFresh Agent Status...")
-	req, err := http.NewRequest("GET", "http://"+gitfresh.API_AGENT_HOST, &bytes.Buffer{})
+	agent, err := gitfresh.CheckAgentStatus(tick)
 	if err != nil {
-		slog.Error(err.Error())
-		return err
-	}
-	client := &http.Client{}
-	var respBody io.ReadCloser
-	times := 5
-	for {
-		<-tick.C
-		println("Checking agent status ...")
-		if times <= 0 {
-			return errors.New("timeout checking agent status")
-		}
-		resp, err := client.Do(req)
-		if err != nil {
-			slog.Error(err.Error())
-			continue
-		}
-		if resp.StatusCode == http.StatusOK {
-			respBody = resp.Body
-			tick.Stop()
-			break
-		}
-		times--
-		slog.Error(resp.Status)
-	}
-	var agent struct {
-		ApiVersion   string `json:"api_version"`
-		TunnelDomain string `json:"tunnel_domain"`
-	}
-	body, _ := io.ReadAll(respBody)
-	if err := json.Unmarshal(body, &agent); err != nil {
-		slog.Error(err.Error())
 		return err
 	}
 	println("GitFresh Agent is running!")
@@ -163,11 +122,11 @@ func initCmd(flags *struct{ Verbose bool }) error {
 	}
 	fRepos := []*gitfresh.Repository{}
 	for i, r := range repos {
-		if err := gitfresh.CreateGitServerHook(&r, config); err != nil {
+		if err := gitfresh.CreateGitServerHook(r, config); err != nil {
 			slog.Error(err.Error())
 			continue
 		}
-		fRepos = append(fRepos, &repos[i])
+		fRepos = append(fRepos, repos[i])
 	}
 	if len(fRepos) < 1 {
 		return errors.New("creating webhook for repositories")
@@ -175,24 +134,54 @@ func initCmd(flags *struct{ Verbose bool }) error {
 	if _, err := gitfresh.SaveReposMetaData(fRepos); err != nil {
 		return err
 	}
-	for _, r := range fRepos {
-		url := fmt.Sprintf("https://github.com/apolo96/%s/settings/hooks", r.Name)
-		fmt.Printf("Repository: %-30s | URL: %-20s\n", r.Name, url)
-	}
+	println("Tracking Repositories")
+	renderRepos(fRepos)
 	return nil
 }
 
-func startcmd(flags *struct{ Verbose bool }) error {
-	println("Loading GitFresh Agent...")
-	api, _ := os.Getwd()
-	slog.Info(api)
-	ls, _ := exec.Command("ls", "-l").CombinedOutput()
-	slog.Info(string(ls))
-	cmd := exec.Command("./api")
-	if err := cmd.Start(); err != nil {
+func refreshCmd(flags *struct{}) error {
+	config, err := gitfresh.ReadConfigFile()
+	if err != nil {
 		return err
 	}
-	slog.Info("gitfresh agent process", "id", cmd.Process.Pid)
-	gitfresh.SaveAgentPID(cmd.Process.Pid)
+	repos, err := gitfresh.ScanRepositories(config.GitWorkDir, gitfresh.APP_GIT_PROVIDER)
+	if err != nil {
+		slog.Error(err.Error())
+		return err
+	}
+	fRepos := []*gitfresh.Repository{}
+	for i, r := range repos {
+		if err := gitfresh.CreateGitServerHook(r, config); err != nil {
+			slog.Error(err.Error())
+			continue
+		}
+		fRepos = append(fRepos, repos[i])
+	}
+	if len(fRepos) < 1 {
+		return errors.New("creating webhook for repositories")
+	}
+	if _, err := gitfresh.SaveReposMetaData(fRepos); err != nil {
+		return err
+	}
+	println("New Repositories")
+	renderRepos(fRepos)
+	return nil
+}
+
+func statusCmd(flags *struct{}) error {
+	ok, err := gitfresh.IsAgentRunning()
+	tick := time.NewTicker(time.Microsecond)
+	if !ok {
+		println("GitFresh Agent is not running!")
+		if err != nil {
+			return err
+		}
+	}
+	println("Check GitFresh Agent Status...")
+	_, err = gitfresh.CheckAgentStatus(tick)
+	if err != nil {
+		return err
+	}
+	println("GitFresh Agent is running!")
 	return nil
 }

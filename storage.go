@@ -10,8 +10,6 @@ import (
 	"strings"
 )
 
-
-
 func CreateConfigFile(config *AppConfig) (file string, err error) {
 	dirname, err := os.UserHomeDir()
 	if err != nil {
@@ -64,8 +62,8 @@ func ReadConfigFile() (*AppConfig, error) {
 	return config, nil
 }
 
-func ScanRepositories(workdir string, gitProvider string) ([]Repository, error) {
-	repos := []Repository{}
+func ScanRepositories(workdir string, gitProvider string) ([]*Repository, error) {
+	repos := []*Repository{}
 	dirs, err := os.ReadDir(workdir)
 	if err != nil {
 		slog.Error(err.Error())
@@ -95,7 +93,7 @@ func ScanRepositories(workdir string, gitProvider string) ([]Repository, error) 
 				slog.Error(err.Error())
 				continue
 			}
-			repos = append(repos, Repository{Owner: surl[3], Name: strings.ReplaceAll(surl[4], ".git\n", "")})
+			repos = append(repos, &Repository{Owner: surl[3], Name: strings.ReplaceAll(surl[4], ".git\n", "")})
 		}
 	}
 	return repos, nil
