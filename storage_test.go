@@ -13,7 +13,7 @@ var TEST_HOME_DIR, _ = os.UserHomeDir()
 func Test_createConfigFile(t *testing.T) {
 	const token = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	type args struct {
-		config *AppFlags
+		config *AppConfig
 	}
 	tests := []struct {
 		name     string
@@ -24,11 +24,12 @@ func Test_createConfigFile(t *testing.T) {
 		{
 			name: "create config file successfully",
 			args: args{
-				&AppFlags{
+				&AppConfig{
 					TunnelToken:    token,
 					TunnelDomain:   "",
 					GitServerToken: token,
 					GitWorkDir:     filepath.Join(TEST_HOME_DIR, "code"),
+					GitHookSecret:  WebHookSecret(),
 				},
 			},
 			wantFile: filepath.Join(TEST_HOME_DIR, APP_FOLDER, APP_CONFIG_FILE_NAME),
