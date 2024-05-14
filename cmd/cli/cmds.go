@@ -55,7 +55,14 @@ func configCmd(flags *AppFlags) error {
 		return errors.New("git is not installed, please install git https://git-scm.com/downloads")
 	}
 	slog.Info("flags values", "content", fmt.Sprint(flags))
-	file, err := gitfresh.CreateConfigFile((*gitfresh.AppFlags)(flags))
+	config := &gitfresh.AppConfig{
+		TunnelToken:    flags.TunnelToken,
+		TunnelDomain:   flags.TunnelDomain,
+		GitServerToken: flags.GitServerToken,
+		GitWorkDir:     flags.GitWorkDir,
+		GitHookSecret:  gitfresh.WebHookSecret(),
+	}
+	file, err := gitfresh.CreateConfigFile(config)
 	if err != nil {
 		slog.Error("creating config file")
 		slog.Error(err.Error())
@@ -145,10 +152,14 @@ func initCmd(flags *struct{ Verbose bool }) error {
 		slog.Error(err.Error())
 		return err
 	}
-	println("GitFresh Agent is running")
+	println("GitFresh Agent is running!")
 	if config.TunnelDomain == "" {
+		println("Saving TunnelDomain")
 		config.TunnelDomain = agent.TunnelDomain
-		//gitfresh.CreateConfigFile(config)
+		_, err := gitfresh.CreateConfigFile(config)
+		if err != nil {
+			return err
+		}
 	}
 	fRepos := []*gitfresh.Repository{}
 	for i, r := range repos {
