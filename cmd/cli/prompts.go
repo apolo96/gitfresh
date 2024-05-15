@@ -36,7 +36,7 @@ func PromptConfirm(label string, value string) bool {
 	for {
 		print("> ")
 		s, _ := r.ReadString('\n')
-		s = strings.TrimRight(strings.TrimSpace(s), "\n")
+		s = strings.ToLower(strings.TrimRight(strings.TrimSpace(s), "\n"))
 		if len(s) < 1 {
 			println("Empty value, please type a real value")
 			continue
