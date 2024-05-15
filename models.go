@@ -8,7 +8,7 @@ type AppConfig struct {
 	GitHookSecret  string
 }
 
-type Repository struct {
+type GitRepository struct {
 	Owner string
 	Name  string
 }

@@ -14,7 +14,7 @@ func renderVerbose(text string) {
 	}
 }
 
-func renderRepos(rp []*gitfresh.Repository, fresh bool) {
+func renderRepos(rp []*gitfresh.GitRepository, fresh bool) {
 	for _, r := range rp {
 		url := fmt.Sprintf("https://github.com/%s/%s", r.Owner, r.Name)
 		if fresh {

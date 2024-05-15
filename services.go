@@ -18,7 +18,8 @@ import (
 	"time"
 )
 
-func CreateGitServerHook(repo *Repository, config *AppConfig) error {
+/* GitServer */
+func CreateGitServerHook(repo *GitRepository, config *AppConfig) error {
 	url := "https://api.github.com/repos/" + filepath.Join(repo.Owner, repo.Name, "hooks")
 	webhook := Webhook{
 		Name:   "web",
@@ -85,11 +86,21 @@ func CreateGitServerHook(repo *Repository, config *AppConfig) error {
 	return nil
 }
 
-func DiffRepositories() ([]*Repository, error) {
+func WebHookSecret() string {
+	const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+	secret := make([]byte, 10)
+	for i := range secret {
+		secret[i] = alpha[rand.Intn(len(alpha))]
+	}
+	return string(secret)
+}
+
+func DiffRepositories() ([]*GitRepository, error) {
 	/* Storage */
 	r, _ := ScanRepositories("", "")
 	var data []map[string]any
-	repos := []*Repository{}
+	repos := []*GitRepository{}
 	b, err := ListRepository()
 	if err != nil {
 		return repos, err
@@ -112,16 +123,6 @@ func DiffRepositories() ([]*Repository, error) {
 		}
 	}
 	return repos, err
-}
-
-func WebHookSecret() string {
-	const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	rand.New(rand.NewSource(time.Now().UnixNano()))
-	secret := make([]byte, 10)
-	for i := range secret {
-		secret[i] = alpha[rand.Intn(len(alpha))]
-	}
-	return string(secret)
 }
 
 /* Agent */
@@ -215,4 +216,105 @@ func CheckAgentStatus(tick *time.Ticker) (Agent, error) {
 		return agent, err
 	}
 	return agent, nil
+}
+
+/* AppConfig */
+func CreateConfigFile(config *AppConfig) (file string, err error) {
+	dirname, err := os.UserHomeDir()
+	if err != nil {
+		println("error getting user home directory")
+		slog.Error(err.Error())
+		return file, err
+	}
+	content, err := json.MarshalIndent(config, "", "  ")
+	slog.Debug("parsing config parameters", "data", string(content))
+	if err != nil {
+		println("error parsing the config parameters")
+		slog.Error(err.Error())
+		return file, err
+	}
+	fl := &FlatFile{Name: APP_CONFIG_FILE_NAME, Path: filepath.Join(dirname, APP_FOLDER)}
+	_, err = fl.Write(content)
+	if err != nil {
+		return filepath.Join(fl.Path, fl.Name), err
+	}
+	slog.Info("config file created successfully")
+	return file, nil
+}
+
+func ReadConfigFile() (*AppConfig, error) {
+	dirname, err := os.UserHomeDir()
+	config := &AppConfig{}
+	if err != nil {
+		return config, err
+	}
+	fl := &FlatFile{Name: APP_CONFIG_FILE_NAME, Path: filepath.Join(dirname, APP_FOLDER)}
+	file, err := fl.Read()
+	if err != nil {
+		return config, err
+	}
+	if err := json.Unmarshal(file, &config); err != nil {
+		return config, err
+	}
+	return config, nil
+}
+
+/* GitRepository */
+func ScanRepositories(workdir string, gitProvider string) ([]*GitRepository, error) {
+	repos := []*GitRepository{}
+	dirs, err := os.ReadDir(workdir)
+	if err != nil {
+		slog.Error(err.Error())
+		return repos, err
+	}
+	for _, f := range dirs {
+		if f.IsDir() {
+			path := filepath.Join(workdir, f.Name())
+			git, _ := exec.LookPath("git")
+			c := exec.Command(git, "remote", "get-url", "origin")
+			c.Dir = path
+			url, err := c.CombinedOutput()
+			if err != nil {
+				slog.Info(path)
+				slog.Error("executing git command", "error", err.Error(), "path", git)
+				continue
+			}
+			slog.Info("repository remote url " + string(url))
+			surl := strings.Split(string(url), "/")
+			if len(surl) < 4 {
+				err = errors.New("getting repository info")
+				slog.Error(err.Error())
+				continue
+			}
+			if gitProvider != surl[2] {
+				err = errors.New("privider not suported" + surl[2])
+				slog.Error(err.Error())
+				continue
+			}
+			repos = append(repos, &GitRepository{Owner: surl[3], Name: strings.ReplaceAll(surl[4], ".git\n", "")})
+		}
+	}
+	return repos, nil
+}
+
+func SaveRepositories(repos []*GitRepository) (file string, err error) {
+	dirname, err := os.UserHomeDir()
+	if err != nil {
+		println("error getting user home directory")
+		slog.Error(err.Error())
+		return file, err
+	}
+	content, err := json.MarshalIndent(repos, "", "  ")
+	slog.Debug("parsing config parameters", "data", string(content))
+	if err != nil {
+		println("error parsing the config parameters")
+		slog.Error(err.Error())
+		return file, err
+	}
+	fl := &FlatFile{Name: APP_REPOS_FILE_NAME, Path: filepath.Join(dirname, APP_FOLDER)}
+	_, err = fl.Write(content)
+	if err != nil {
+		return filepath.Join(fl.Path, fl.Name), err
+	}
+	return file, nil
 }

@@ -59,7 +59,7 @@ func Test_scanRepositories(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    []*Repository
+		want    []*GitRepository
 		wantErr bool
 	}{
 		{
@@ -68,7 +68,7 @@ func Test_scanRepositories(t *testing.T) {
 				workdir:     "/Users/laniakea/code/temp",
 				gitProvider: "github.com",
 			},
-			want: []*Repository{
+			want: []*GitRepository{
 				{
 					Owner: "apolo96",
 					Name:  "torcli",
@@ -97,7 +97,7 @@ func Test_scanRepositories(t *testing.T) {
 
 func Test_saveReposMetaData(t *testing.T) {
 	type args struct {
-		repos []*Repository
+		repos []*GitRepository
 	}
 	reposFilePath := filepath.Join(TEST_HOME_DIR, APP_FOLDER, APP_REPOS_FILE_NAME)
 	tests := []struct {
@@ -109,7 +109,7 @@ func Test_saveReposMetaData(t *testing.T) {
 		{
 			name: "save repos sucessfully",
 			args: args{
-				[]*Repository{
+				[]*GitRepository{
 					{
 						Owner: "apolo96",
 						Name:  "torcli",
@@ -126,7 +126,7 @@ func Test_saveReposMetaData(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotFile, err := SaveReposMetaData(tt.args.repos)
+			gotFile, err := SaveRepositories(tt.args.repos)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("saveReposMetaData() error = %v, wantErr %v", err, tt.wantErr)
 				return

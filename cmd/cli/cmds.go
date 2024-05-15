@@ -100,7 +100,7 @@ func initCmd(flags *struct{ Verbose bool }) error {
 			return err
 		}
 	}
-	fRepos := []*gitfresh.Repository{}
+	fRepos := []*gitfresh.GitRepository{}
 	for i, r := range repos {
 		if err := gitfresh.CreateGitServerHook(r, config); err != nil {
 			slog.Error(err.Error())
@@ -111,7 +111,7 @@ func initCmd(flags *struct{ Verbose bool }) error {
 	if len(fRepos) < 1 {
 		return errors.New("creating webhook for repositories")
 	}
-	if _, err := gitfresh.SaveReposMetaData(fRepos); err != nil {
+	if _, err := gitfresh.SaveRepositories(fRepos); err != nil {
 		return err
 	}
 	println("\n🍃 Repositories to Refresh:\n")
@@ -129,7 +129,7 @@ func scanCmd(flags *struct{}) error {
 		slog.Error(err.Error())
 		return err
 	}
-	fRepos := []*gitfresh.Repository{}
+	fRepos := []*gitfresh.GitRepository{}
 	for i, r := range repos {
 		if err := gitfresh.CreateGitServerHook(r, config); err != nil {
 			slog.Error(err.Error())
@@ -140,7 +140,7 @@ func scanCmd(flags *struct{}) error {
 	if len(fRepos) < 1 {
 		return errors.New("creating webhook for repositories")
 	}
-	if _, err := gitfresh.SaveReposMetaData(fRepos); err != nil {
+	if _, err := gitfresh.SaveRepositories(fRepos); err != nil {
 		return err
 	}
 	println("\n🍃 Repositories to Refresh:\n")
