@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"os/exec"
-	"strings"
 	"time"
 
 	"github.com/apolo96/gitfresh"
@@ -16,7 +14,7 @@ type AppFlags struct {
 	TunnelToken    string `name:"TunnelToken" description:"Actually gitfresh support only Ngrok Internet Tunnel.\nYou can get a Token going to https://dashboard.ngrok.com/get-started/your-authtoken \n"`
 	TunnelDomain   string `name:"TunnelDomain" description:"Actually gitfresh support only Ngrok Internet Tunnel.\nYou can get a Custom Domain going to https://dashboard.ngrok.com/cloud-edge/domains \n"`
 	GitServerToken string `name:"GitServerToken" description:"Actually gitfresh support only github.com.\nYou can get a Toke going to https://github.com \n"`
-	GitWorkDir     string `name:"GitWorkDir" description:"Your Git working directory where you have all repositories. For example: /users/lio/code . Type the absolute path.\nIf you don't enter a GitWorkDir, then GitFresh assumes that your GitWorkDir is your current directory. \n"`
+	GitWorkDir     string `name:"GitWorkDir" description:"Your Git working directory where you have all repositories.\nFor example: /users/lio/code . Type the absolute path.\nIf you don't enter a GitWorkDir, then GitFresh assumes that your GitWorkDir is your current directory. \n"`
 }
 
 func configCmd(flags *AppFlags) error {
@@ -40,16 +38,6 @@ func configCmd(flags *AppFlags) error {
 		}
 		flags.GitWorkDir = workdir
 	}
-	p, err := exec.LookPath("git")
-	if err != nil {
-		slog.Error("which git path", "error", err.Error())
-		println("error:", err.Error())
-		println("tip: check that git is installed")
-		return err
-	}
-	if checkGit := strings.ReplaceAll(string(p), "\n", ""); checkGit == "" {
-		return errors.New("git is not installed, please install git https://git-scm.com/downloads")
-	}
 	slog.Info("flags values", "content", fmt.Sprint(flags))
 	config := &gitfresh.AppConfig{
 		TunnelToken:    flags.TunnelToken,
@@ -58,22 +46,14 @@ func configCmd(flags *AppFlags) error {
 		GitWorkDir:     flags.GitWorkDir,
 		GitHookSecret:  gitfresh.WebHookSecret(),
 	}
-	file, err := gitfresh.CreateConfigFile(config)
+	_, err := gitfresh.CreateConfigFile(config)
 	if err != nil {
 		slog.Error("creating config file")
 		slog.Error(err.Error())
 		println("ERROR Creating config file")
 		return err
 	}
-	/* TODO:
-	*	Create service for read config File
-	 */
-	output, err := exec.Command("cat", file).Output()
-	if err != nil {
-		return err
-	}
-	os.Stdout.Write(output)
-	println("\n\n✅ Config successfully created! Now, run the following command: \n\n gitfresh init \n")
+	println("✅ Config successfully created! Now, run the following command: \n\n gitfresh init \n")
 	return nil
 }
 
@@ -87,9 +67,8 @@ func initCmd(flags *struct{ Verbose bool }) error {
 		slog.Error(err.Error())
 		return err
 	}
-
-	println("Discovery Repositories")
-	renderRepos(repos)
+	println("🌟 Repositories:\n")
+	renderRepos(repos, false)
 	if len(repos) < 1 {
 		println("The scanner didn't find available repositories")
 		return nil
@@ -98,6 +77,7 @@ func initCmd(flags *struct{ Verbose bool }) error {
 	ok, err := gitfresh.IsAgentRunning()
 	tick := time.NewTicker(time.Microsecond)
 	if !ok && err != nil {
+		renderVerbose("Starting GitFresh Agent...")
 		pid, err := gitfresh.StartAgent()
 		if err != nil {
 			return err
@@ -106,12 +86,12 @@ func initCmd(flags *struct{ Verbose bool }) error {
 		tick.Reset(time.Second * 3)
 	}
 	/* Status check */
-	println("Check GitFresh Agent Status...")
+	renderVerbose("Checking GitFresh Agent Status...")
 	agent, err := gitfresh.CheckAgentStatus(tick)
 	if err != nil {
 		return err
 	}
-	println("GitFresh Agent is running!")
+	renderVerbose("GitFresh Agent is running!")
 	if config.TunnelDomain == "" {
 		println("Saving TunnelDomain")
 		config.TunnelDomain = agent.TunnelDomain
@@ -134,12 +114,12 @@ func initCmd(flags *struct{ Verbose bool }) error {
 	if _, err := gitfresh.SaveReposMetaData(fRepos); err != nil {
 		return err
 	}
-	println("Tracking Repositories")
-	renderRepos(fRepos)
+	println("\n🍃 Repositories to Refresh:\n")
+	renderRepos(fRepos, true)
 	return nil
 }
 
-func refreshCmd(flags *struct{}) error {
+func scanCmd(flags *struct{}) error {
 	config, err := gitfresh.ReadConfigFile()
 	if err != nil {
 		return err
@@ -163,8 +143,8 @@ func refreshCmd(flags *struct{}) error {
 	if _, err := gitfresh.SaveReposMetaData(fRepos); err != nil {
 		return err
 	}
-	println("New Repositories")
-	renderRepos(fRepos)
+	println("\n🍃 Repositories to Refresh:\n")
+	renderRepos(fRepos, true)
 	return nil
 }
 
@@ -172,16 +152,16 @@ func statusCmd(flags *struct{}) error {
 	ok, err := gitfresh.IsAgentRunning()
 	tick := time.NewTicker(time.Microsecond)
 	if !ok {
-		println("GitFresh Agent is not running!")
+		println("❌ GitFresh Agent is not running!")
 		if err != nil {
 			return err
 		}
 	}
-	println("Check GitFresh Agent Status...")
+	println("Checking GitFresh Agent Status...")
 	_, err = gitfresh.CheckAgentStatus(tick)
 	if err != nil {
 		return err
 	}
-	println("GitFresh Agent is running!")
+	println("✅ GitFresh Agent is running!")
 	return nil
 }
