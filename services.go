@@ -165,14 +165,13 @@ func SaveAgentPID(pid int) error {
 }
 
 func StartAgent() (int, error) {
-	println("Loading GitFresh Agent...")
 	/* path := exec.LookPath("gitfreshd")
 	cmd := exec.Command(path) */
 	cmd := exec.Command("./api")
-	slog.Info("gitfresh agent process", "id", cmd.Process.Pid)
 	if err := cmd.Start(); err != nil {
 		return 0, err
 	}
+	slog.Info("gitfresh agent process", "id", cmd.Process.Pid)
 	return cmd.Process.Pid, nil
 }
 
