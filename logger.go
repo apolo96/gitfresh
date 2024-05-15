@@ -7,14 +7,15 @@ import (
 	"path/filepath"
 )
 
-func NewLogger() (*slog.Logger, func(), error) {
+
+func NewLogFile(name string) (io.Writer, func(), error) {
 	dir, _ := os.UserHomeDir()
 	path := filepath.Join(dir, APP_FOLDER)
 	if err := os.MkdirAll(path, os.ModePerm); err != nil {
 		slog.Error(err.Error())
 		return nil, func() {}, err
 	}
-	path = filepath.Join(path, APP_AGENT_LOG_FILE)
+	path = filepath.Join(path, name)
 	logfile, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
 		slog.Error(err.Error())
@@ -23,8 +24,5 @@ func NewLogger() (*slog.Logger, func(), error) {
 	closer := func() {
 		logfile.Close()
 	}
-	writer := io.Writer(logfile)
-	logger := slog.New(slog.NewJSONHandler(writer, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	logger = logger.With("version", "1.0.0")
-	return logger, closer, nil
+	return logfile, closer, nil
 }

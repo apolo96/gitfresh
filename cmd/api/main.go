@@ -27,11 +27,13 @@ func main() {
 func run() (e error) {
 	/* Logger */
 	println("Config Agent Logger")
-	logger, close, err := gitfresh.NewLogger()
+	file, closer, err := gitfresh.NewLogFile(gitfresh.APP_AGENT_LOG_FILE)
 	if err != nil {
 		return err
 	}
-	defer close()
+	defer closer()
+	logger := slog.New(slog.NewJSONHandler(file, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	logger = logger.With("version", "1.0.0")
 	slog.SetDefault(logger)
 	/* Servers */
 	slog.Info("Loading GitFresh Agent")
@@ -110,7 +112,12 @@ type Payload struct {
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	slog.Info("handling webhook", "host", w.Header().Get("Host"))
+	if r.Header.Get("X-GitHub-Event") == "ping"{
+		slog.Info("handling ping", "hook_id", r.Header.Get("X-GitHub-Hook-ID"))
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	slog.Info("handling webhook", "hook_id", r.Header.Get("X-GitHub-Hook-ID"))
 	form, err := io.ReadAll(r.Body)
 	if err != nil {
 		slog.Error(err.Error())
