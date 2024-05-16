@@ -1,3 +1,8 @@
+# Ignore files without extension
+*
+!*.*
+!*/
+
 ### macOS ###
 # General
 .DS_Store
