@@ -1,9 +1,13 @@
 package gitfresh
 
 import (
+	"fmt"
+	"log/slog"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -51,45 +55,88 @@ func Test_createConfigFile(t *testing.T) {
 	}
 }
 
-func Test_scanRepositories(t *testing.T) {
+type MockAppOS struct {
+	RunFunc      func(path string, workdir string, args ...string) ([]byte, error)
+	LookFunc     func(cmd string) (string, error)
+	WalkFuncMock func(path string, fn func(string)) error
+}
+
+func (m *MockAppOS) RunProgram(path string, workdir string, args ...string) ([]byte, error) {
+	return m.RunFunc(path, workdir, args...)
+}
+
+func (m *MockAppOS) LookProgram(cmd string) (string, error) {
+	return m.LookFunc(cmd)
+}
+
+func (m *MockAppOS) WalkDirFunc(path string, fn func(string)) error {
+	return m.WalkFuncMock(path, fn)
+}
+
+func TestGitRepositorySvc_ScanRepositories(t *testing.T) {
+	comparable := []*GitRepository{}
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+	num := rand.Intn(10)
+	for i := num; i > 0; i-- {
+		comparable = append(comparable, &GitRepository{
+			Name:  "gitfresh",
+			Owner: "apolo96",
+		})
+	}
+	mockAppOS := &MockAppOS{
+		RunFunc: func(path string, workdir string, args ...string) ([]byte, error) {
+			fmt.Println(path, workdir, args)
+			return []byte("https://github.com/apolo96/gitfresh.git"), nil
+		},
+		LookFunc: func(cmd string) (string, error) {
+			return "/bin/cmd", nil
+		},
+		WalkFuncMock: func(path string, fn func(string)) error {
+			for i := range num {
+				fn(fmt.Sprint("folder", i))
+			}
+			return nil
+		},
+	}
+	type fields struct {
+		logs  AppLogger
+		appOs OSDirCommand
+	}
 	type args struct {
 		workdir     string
 		gitProvider string
 	}
 	tests := []struct {
 		name    string
+		fields  fields
 		args    args
 		want    []*GitRepository
 		wantErr bool
 	}{
 		{
 			name: "scan repositories successfully",
+			fields: fields{
+				logs:  slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})),
+				appOs: mockAppOS,
+			},
 			args: args{
-				workdir:     "/Users/laniakea/code/temp",
-				gitProvider: "github.com",
+				"mipc/user/work/code",
+				"github.com",
 			},
-			want: []*GitRepository{
-				{
-					Owner: "apolo96",
-					Name:  "torcli",
-				},
-				{
-					Owner: "apolo96",
-					Name:  "metaudio",
-				},
-			},
+			want:    comparable,
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ScanRepositories(tt.args.workdir, tt.args.gitProvider)
+			gr := NewGitRepositorySvc(tt.fields.logs, tt.fields.appOs)
+			got, err := gr.ScanRepositories(tt.args.workdir, tt.args.gitProvider)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("scanRepositories() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("GitRepositorySvc.ScanRepositories() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if diff := cmp.Diff(got, tt.want); diff != "" {
-				t.Errorf(diff)
+				t.Error("GitRepositorySvc.ScanRepositories() = ", diff)
 			}
 		})
 	}

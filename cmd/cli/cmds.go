@@ -57,12 +57,12 @@ func configCmd(flags *AppFlags) error {
 	return nil
 }
 
-func initCmd(flags *struct{ Verbose bool }) error {
+func initCmd(repoSvc *gitfresh.GitRepositorySvc) error {
 	config, err := gitfresh.ReadConfigFile()
 	if err != nil {
 		return err
 	}
-	repos, err := gitfresh.ScanRepositories(config.GitWorkDir, gitfresh.APP_GIT_PROVIDER)
+	repos, err := repoSvc.ScanRepositories(config.GitWorkDir, gitfresh.APP_GIT_PROVIDER)
 	if err != nil {
 		slog.Error(err.Error())
 		return err
@@ -80,6 +80,7 @@ func initCmd(flags *struct{ Verbose bool }) error {
 		renderVerbose("Starting GitFresh Agent...")
 		pid, err := gitfresh.StartAgent()
 		if err != nil {
+			slog.Error(err.Error())
 			return err
 		}
 		gitfresh.SaveAgentPID(pid)
@@ -120,7 +121,7 @@ func initCmd(flags *struct{ Verbose bool }) error {
 }
 
 func scanCmd(flags *struct{}) error {
-	config, err := gitfresh.ReadConfigFile()
+/* 	config, err := gitfresh.ReadConfigFile()
 	if err != nil {
 		return err
 	}
@@ -144,7 +145,7 @@ func scanCmd(flags *struct{}) error {
 		return err
 	}
 	println("\n🍃 Repositories to Refresh:\n")
-	renderRepos(fRepos, true)
+	renderRepos(fRepos, true) */
 	return nil
 }
 

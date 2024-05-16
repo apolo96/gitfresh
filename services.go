@@ -96,35 +96,6 @@ func WebHookSecret() string {
 	return string(secret)
 }
 
-func DiffRepositories() ([]*GitRepository, error) {
-	/* Storage */
-	r, _ := ScanRepositories("", "")
-	var data []map[string]any
-	repos := []*GitRepository{}
-	b, err := ListRepository()
-	if err != nil {
-		return repos, err
-	}
-	fmt.Println(string(b))
-	if err := json.Unmarshal(b, &data); err != nil {
-		slog.Error(err.Error())
-		return repos, err
-	}
-	result := make(map[string]struct{})
-	for _, v := range data {
-		result[v["Name"].(string)] = struct{}{}
-	}
-
-	fmt.Println(data)
-	for _, rs := range r {
-		_, ok := result[rs.Name]
-		if ok {
-			repos = append(repos, rs)
-		}
-	}
-	return repos, err
-}
-
 /* Agent */
 func IsAgentRunning() (bool, error) {
 	dir, _ := os.UserHomeDir()
@@ -260,39 +231,47 @@ func ReadConfigFile() (*AppConfig, error) {
 }
 
 /* GitRepository */
-func ScanRepositories(workdir string, gitProvider string) ([]*GitRepository, error) {
-	repos := []*GitRepository{}
-	dirs, err := os.ReadDir(workdir)
-	if err != nil {
-		slog.Error(err.Error())
-		return repos, err
+type GitRepositorySvc struct {
+	logs  AppLogger
+	appOS OSDirCommand
+}
+
+func NewGitRepositorySvc(l AppLogger, a OSDirCommand) *GitRepositorySvc {
+	return &GitRepositorySvc{
+		logs:  l,
+		appOS: a,
 	}
-	for _, f := range dirs {
-		if f.IsDir() {
-			path := filepath.Join(workdir, f.Name())
-			git, _ := exec.LookPath("git")
-			c := exec.Command(git, "remote", "get-url", "origin")
-			c.Dir = path
-			url, err := c.CombinedOutput()
-			if err != nil {
-				slog.Info(path)
-				slog.Error("executing git command", "error", err.Error(), "path", git)
-				continue
-			}
-			slog.Info("repository remote url " + string(url))
-			surl := strings.Split(string(url), "/")
-			if len(surl) < 4 {
-				err = errors.New("getting repository info")
-				slog.Error(err.Error())
-				continue
-			}
-			if gitProvider != surl[2] {
-				err = errors.New("privider not suported" + surl[2])
-				slog.Error(err.Error())
-				continue
-			}
-			repos = append(repos, &GitRepository{Owner: surl[3], Name: strings.ReplaceAll(surl[4], ".git\n", "")})
+}
+
+func (gr GitRepositorySvc) ScanRepositories(workdir string, gitProvider string) ([]*GitRepository, error) {
+	repos := []*GitRepository{}
+	fn := func(dirname string) {
+		workdir := filepath.Join(workdir, dirname)
+		git, _ := gr.appOS.LookProgram("git")
+		url, err := gr.appOS.RunProgram(git, workdir, "remote", "get-url", "origin")
+		if err != nil {
+			gr.logs.Error("executing git command", "error", err.Error(), "path", git, "workdir", workdir)
+			return
 		}
+		gr.logs.Info("repository remote url " + string(url))
+		surl := strings.Split(string(url), "/")
+		if len(surl) < 4 {
+			err = errors.New("getting repository info")
+			gr.logs.Error(err.Error())
+			return
+		}
+		if gitProvider != surl[2] {
+			err = errors.New("privider not suported" + surl[2])
+			gr.logs.Error(err.Error())
+			return
+		}
+		name := strings.ReplaceAll(strings.ReplaceAll(surl[4], ".git", ""), "\n", "")
+		repos = append(repos, &GitRepository{Owner: surl[3], Name: name})
+	}
+	err := gr.appOS.WalkDirFunc(workdir, fn)
+	if err != nil {
+		gr.logs.Error(err.Error())
+		return repos, err
 	}
 	return repos, nil
 }
