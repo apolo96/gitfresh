@@ -39,7 +39,8 @@ func (f *FlatFile) Write(data []byte) (n int, err error) {
 		slog.Error(err.Error())
 		return 0, err
 	}
-	err = os.WriteFile(filepath.Join(f.Path, f.Name), data, 0644)
+	file := filepath.Join(f.Path, f.Name)
+	err = os.WriteFile(file, data, 0644)
 	if err != nil {
 		slog.Error(err.Error())
 		return 0, err

@@ -112,7 +112,7 @@ func initCmd(repoSvc *gitfresh.GitRepositorySvc) error {
 	if len(fRepos) < 1 {
 		return errors.New("creating webhook for repositories")
 	}
-	if _, err := gitfresh.SaveRepositories(fRepos); err != nil {
+	if _, err := repoSvc.SaveRepositories(fRepos); err != nil {
 		return err
 	}
 	println("\n🍃 Repositories to Refresh:\n")
@@ -120,12 +120,14 @@ func initCmd(repoSvc *gitfresh.GitRepositorySvc) error {
 	return nil
 }
 
-func scanCmd(flags *struct{}) error {
-/* 	config, err := gitfresh.ReadConfigFile()
+func scanCmd(repoSvc *gitfresh.GitRepositorySvc) error {
+	config, err := gitfresh.ReadConfigFile()
 	if err != nil {
 		return err
 	}
-	repos, err := gitfresh.ScanRepositories(config.GitWorkDir, gitfresh.APP_GIT_PROVIDER)
+	repos, err := repoSvc.ScanRepositories(config.GitWorkDir, gitfresh.APP_GIT_PROVIDER)
+	println("🌟 Repositories:\n")
+	renderRepos(repos, false)
 	if err != nil {
 		slog.Error(err.Error())
 		return err
@@ -141,11 +143,11 @@ func scanCmd(flags *struct{}) error {
 	if len(fRepos) < 1 {
 		return errors.New("creating webhook for repositories")
 	}
-	if _, err := gitfresh.SaveRepositories(fRepos); err != nil {
+	if _, err := repoSvc.SaveRepositories(fRepos); err != nil {
 		return err
 	}
 	println("\n🍃 Repositories to Refresh:\n")
-	renderRepos(fRepos, true) */
+	renderRepos(fRepos, true)
 	return nil
 }
 

@@ -232,14 +232,16 @@ func ReadConfigFile() (*AppConfig, error) {
 
 /* GitRepository */
 type GitRepositorySvc struct {
-	logs  AppLogger
-	appOS OSDirCommand
+	logs      AppLogger
+	appOS     OSDirCommand
+	fileStore FlatFiler
 }
 
-func NewGitRepositorySvc(l AppLogger, a OSDirCommand) *GitRepositorySvc {
+func NewGitRepositorySvc(l AppLogger, a OSDirCommand, f FlatFiler) *GitRepositorySvc {
 	return &GitRepositorySvc{
-		logs:  l,
-		appOS: a,
+		logs:      l,
+		appOS:     a,
+		fileStore: f,
 	}
 }
 
@@ -276,24 +278,17 @@ func (gr GitRepositorySvc) ScanRepositories(workdir string, gitProvider string) 
 	return repos, nil
 }
 
-func SaveRepositories(repos []*GitRepository) (file string, err error) {
-	dirname, err := os.UserHomeDir()
-	if err != nil {
-		println("error getting user home directory")
-		slog.Error(err.Error())
-		return file, err
-	}
+func (gr GitRepositorySvc) SaveRepositories(repos []*GitRepository) (n int, err error) {
 	content, err := json.MarshalIndent(repos, "", "  ")
 	slog.Debug("parsing config parameters", "data", string(content))
 	if err != nil {
 		println("error parsing the config parameters")
 		slog.Error(err.Error())
-		return file, err
+		return 0, err
 	}
-	fl := &FlatFile{Name: APP_REPOS_FILE_NAME, Path: filepath.Join(dirname, APP_FOLDER)}
-	_, err = fl.Write(content)
+	n, err = gr.fileStore.Write(content)
 	if err != nil {
-		return filepath.Join(fl.Path, fl.Name), err
+		return n, err
 	}
-	return file, nil
+	return n, nil
 }

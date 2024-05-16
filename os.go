@@ -19,6 +19,7 @@ type OSDirCommand interface {
 	OSCommander
 	OSDirer
 	OSPather
+	/* UserHomePath() (string, error) */
 }
 
 type AppOS struct{}
@@ -45,3 +46,7 @@ func (AppOS) WalkDirFunc(path string, fn func(string)) error {
 	}
 	return nil
 }
+
+/* func (AppOS) UserHomePath() (string, error) {
+	return os.UserHomeDir()
+} */
