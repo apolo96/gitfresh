@@ -2,8 +2,10 @@ package main
 
 import (
 	"log/slog"
+	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/apolo96/gitfresh"
 	"github.com/leaanthony/clir"
@@ -26,18 +28,28 @@ func run() error {
 	logger := slog.New(slog.NewJSONHandler(file, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	logger = logger.With("version", "1.0.0")
 	slog.SetDefault(logger)
-	/* App Services */
+	/* Config */
 	userPath, err := os.UserHomeDir()
 	if err != nil {
 		slog.Error("error getting user home directory", "error", err.Error())
 		return err
 	}
+	/* Services */
+	appOS := &gitfresh.AppOS{}
 	gitRepoSvc := gitfresh.NewGitRepositorySvc(logger,
-		&gitfresh.AppOS{},
+		appOS,
 		&gitfresh.FlatFile{
 			Name: gitfresh.APP_REPOS_FILE_NAME,
 			Path: filepath.Join(userPath, gitfresh.APP_FOLDER),
 		},
+	)
+	agentSvc := gitfresh.NewAgentSvc(logger,
+		appOS,
+		&gitfresh.FlatFile{
+			Name: gitfresh.APP_AGENT_FILE,
+			Path: filepath.Join(userPath, gitfresh.APP_FOLDER),
+		},
+		&http.Client{Timeout: time.Second * 2},
 	)
 	/* CLI */
 	cli := clir.NewCli("gitfresh", "A DX Tool to keep the git repositories updated 😎", "v1.0.0")
@@ -47,12 +59,17 @@ func run() error {
 	flags := &AppFlags{}
 	initCommand.AddFlags(flags)
 	initCommand.Action(func() error {
-		return initCmd(gitRepoSvc)
+		return initCmd(gitRepoSvc, agentSvc)
 	})
+	/* Scan Command */
 	scan := cli.NewSubCommand("scan", "Discover new repositories to refresh")
 	scan.Action(func() error {
 		return scanCmd(gitRepoSvc)
 	})
-	cli.NewSubCommandFunction("status", "Check agent status", statusCmd)
+	/* Status Command */
+	status := cli.NewSubCommand("status", "Check agent status")
+	status.Action(func() error {
+		return statusCmd(agentSvc)
+	})
 	return cli.Run()
 }

@@ -57,7 +57,7 @@ func configCmd(flags *AppFlags) error {
 	return nil
 }
 
-func initCmd(repoSvc *gitfresh.GitRepositorySvc) error {
+func initCmd(repoSvc *gitfresh.GitRepositorySvc, agentSvc *gitfresh.AgentSvc) error {
 	config, err := gitfresh.ReadConfigFile()
 	if err != nil {
 		return err
@@ -74,21 +74,21 @@ func initCmd(repoSvc *gitfresh.GitRepositorySvc) error {
 		return nil
 	}
 	/* Start Agent */
-	ok, err := gitfresh.IsAgentRunning()
+	ok, err := agentSvc.IsAgentRunning()
 	tick := time.NewTicker(time.Microsecond)
 	if !ok && err != nil {
 		renderVerbose("Starting GitFresh Agent...")
-		pid, err := gitfresh.StartAgent()
+		pid, err := agentSvc.StartAgent()
 		if err != nil {
 			slog.Error(err.Error())
 			return err
 		}
-		gitfresh.SaveAgentPID(pid)
+		agentSvc.SaveAgentPID(pid)
 		tick.Reset(time.Second * 3)
 	}
 	/* Status check */
 	renderVerbose("Checking GitFresh Agent Status...")
-	agent, err := gitfresh.CheckAgentStatus(tick)
+	agent, err := agentSvc.CheckAgentStatus(tick)
 	if err != nil {
 		return err
 	}
@@ -151,8 +151,8 @@ func scanCmd(repoSvc *gitfresh.GitRepositorySvc) error {
 	return nil
 }
 
-func statusCmd(flags *struct{}) error {
-	ok, err := gitfresh.IsAgentRunning()
+func statusCmd(agentSvc *gitfresh.AgentSvc) error {
+	ok, err := agentSvc.IsAgentRunning()
 	tick := time.NewTicker(time.Microsecond)
 	if !ok {
 		println("❌ GitFresh Agent is not running!")
@@ -161,7 +161,7 @@ func statusCmd(flags *struct{}) error {
 		}
 	}
 	println("Checking GitFresh Agent Status...")
-	_, err = gitfresh.CheckAgentStatus(tick)
+	_, err = agentSvc.CheckAgentStatus(tick)
 	if err != nil {
 		return err
 	}

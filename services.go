@@ -10,11 +10,9 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -97,16 +95,25 @@ func WebHookSecret() string {
 }
 
 /* Agent */
-func IsAgentRunning() (bool, error) {
-	dir, _ := os.UserHomeDir()
-	path := filepath.Join(dir, APP_FOLDER, APP_AGENT_FILE)
-	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false, err
+type AgentSvc struct {
+	logs       AppLogger
+	appOS      OSCommander
+	fileStore  FlatFiler
+	httpClient HttpClienter
+}
+
+func NewAgentSvc(l AppLogger, a OSCommander, f FlatFiler, c HttpClienter) *AgentSvc {
+	return &AgentSvc{
+		logs:       l,
+		appOS:      a,
+		fileStore:  f,
+		httpClient: c,
 	}
-	content, err := os.ReadFile(path)
+}
+
+func (svc AgentSvc) IsAgentRunning() (bool, error) {
+	content, err := svc.fileStore.Read()
 	if err != nil {
-		fmt.Printf("Error al leer el archivo PID: %v\n", err)
 		return false, err
 	}
 	pidstr := strings.TrimSpace(string(content))
@@ -118,48 +125,36 @@ func IsAgentRunning() (bool, error) {
 		fmt.Println("Error during conversion")
 		return false, err
 	}
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false, err
-	}
-	err = process.Signal(os.Signal(syscall.Signal(0)))
-	if err != nil {
-		return false, err
-	}
-	return true, nil
+	return svc.appOS.FindProgram(pid)
 }
 
-func SaveAgentPID(pid int) error {
-	pidStr := fmt.Sprint(pid)
-	dir, _ := os.UserHomeDir()
-	path := filepath.Join(dir, APP_FOLDER, APP_AGENT_FILE)
-	return os.WriteFile(path, []byte(pidStr), 0644)
+func (svc AgentSvc) SaveAgentPID(pid int) (int, error) {
+	return svc.fileStore.Write([]byte(fmt.Sprint(pid)))
 }
 
-func StartAgent() (int, error) {
-	/* path := exec.LookPath("gitfreshd")
-	cmd := exec.Command(path) */
-	cmd := exec.Command("./api")
-	if err := cmd.Start(); err != nil {
+func (svc AgentSvc) StartAgent() (int, error) {
+	//path := a.appOS.LookProgram("gitfreshd")
+	path, err := svc.appOS.UserHomePath()
+	if err != nil {
+		slog.Error("getting user home directory", "error", err.Error())
 		return 0, err
 	}
-	slog.Info("gitfresh agent process", "id", cmd.Process.Pid)
-	return cmd.Process.Pid, nil
+	pid, err := svc.appOS.StartProgram("./api", path)
+	if err != nil {
+		slog.Error("starting agent", "error", err.Error())
+		return 0, err
+	}
+	slog.Info("running agent", "pid", pid)
+	return pid, nil
 }
 
-type Agent struct {
-	ApiVersion   string `json:"api_version"`
-	TunnelDomain string `json:"tunnel_domain"`
-}
-
-func CheckAgentStatus(tick *time.Ticker) (Agent, error) {
+func (svc AgentSvc) CheckAgentStatus(tick *time.Ticker) (Agent, error) {
 	var agent Agent = Agent{}
 	req, err := http.NewRequest("GET", "http://"+API_AGENT_HOST, &bytes.Buffer{})
 	if err != nil {
 		slog.Error(err.Error())
 		return agent, err
 	}
-	client := &http.Client{}
 	var respBody io.ReadCloser
 	times := 5
 	for {
@@ -167,7 +162,7 @@ func CheckAgentStatus(tick *time.Ticker) (Agent, error) {
 		if times <= 0 {
 			return agent, errors.New("timeout checking agent status")
 		}
-		resp, err := client.Do(req)
+		resp, err := svc.httpClient.Do(req)
 		if err != nil {
 			slog.Error(err.Error())
 			continue
