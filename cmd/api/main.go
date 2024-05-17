@@ -101,18 +101,8 @@ func tunnel(ctx context.Context, ch chan<- string) error {
 	return http.Serve(listener, http.HandlerFunc(handler))
 }
 
-type Repository struct {
-	Name string `json:"name"`
-}
-
-type Payload struct {
-	Ref        string     `json:"ref"`
-	Repository Repository `json:"repository"`
-	Commit     string     `json:"after"`
-}
-
 func handler(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("X-GitHub-Event") == "ping"{
+	if r.Header.Get("X-GitHub-Event") == "ping" {
 		slog.Info("handling ping", "hook_id", r.Header.Get("X-GitHub-Hook-ID"))
 		w.WriteHeader(http.StatusOK)
 		return
@@ -124,7 +114,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "error reading request data", http.StatusBadRequest)
 		return
 	}
-	var p Payload
+	var p gitfresh.APIPayload
 	if err := json.Unmarshal([]byte(form), &p); err != nil {
 		slog.Error(err.Error())
 		http.Error(w, "error parsing data form", http.StatusBadRequest)
