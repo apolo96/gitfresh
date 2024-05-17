@@ -356,7 +356,8 @@ func TestAgentSvc_StartAgent(t *testing.T) {
 				fileStore:  tFileStoreAgent,
 				httpClient: &MockClient{},
 			},
-			want: tPID,
+			want:    tPID,
+			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
@@ -374,6 +375,96 @@ func TestAgentSvc_StartAgent(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("AgentSvc.StartAgent() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAgentSvc_IsAgentRunning(t *testing.T) {
+	type fields struct {
+		logs       AppLogger
+		appOS      OSCommander
+		fileStore  FlatFiler
+		httpClient HttpClienter
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "agent is running succesfully",
+			fields: fields{
+				logs:       slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})),
+				appOS:      mockAppOS,
+				fileStore:  tFileStoreAgent,
+				httpClient: &MockClient{},
+			},
+			want:    true,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := NewAgentSvc(tt.fields.logs, tt.fields.appOS, tt.fields.fileStore, tt.fields.httpClient)
+			got, err := svc.IsAgentRunning()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AgentSvc.IsAgentRunning() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("AgentSvc.IsAgentRunning() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAgentSvc_SaveAgentPID(t *testing.T) {
+	type fields struct {
+		logs       AppLogger
+		appOS      OSCommander
+		fileStore  FlatFiler
+		httpClient HttpClienter
+	}
+	type args struct {
+		pid int
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    int
+		wantErr bool
+	}{
+		{
+			name: "agent is running succesfully",
+			fields: fields{
+				logs:       slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})),
+				appOS:      mockAppOS,
+				fileStore:  tFileStoreAgent,
+				httpClient: &MockClient{},
+			},
+			args:    args{pid: tPID},
+			want:    len([]byte(fmt.Sprint(tPID))),
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := AgentSvc{
+				logs:       tt.fields.logs,
+				appOS:      tt.fields.appOS,
+				fileStore:  tt.fields.fileStore,
+				httpClient: tt.fields.httpClient,
+			}
+			got, err := svc.SaveAgentPID(tt.args.pid)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AgentSvc.SaveAgentPID() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("AgentSvc.SaveAgentPID() = %v, want %v", got, tt.want)
 			}
 		})
 	}
