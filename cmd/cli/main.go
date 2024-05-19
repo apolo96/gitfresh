@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -9,7 +10,7 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		slog.Error(err.Error())
+		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
 }
