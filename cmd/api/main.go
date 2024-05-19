@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/apolo96/gitfresh"
@@ -25,7 +27,7 @@ func main() {
 	}
 }
 
-func run() (e error) {
+func run() error {
 	/* Logger */
 	println("Config Agent Logger")
 	file, closer, err := gitfresh.NewLogFile(gitfresh.APP_AGENT_LOG_FILE)
@@ -36,11 +38,19 @@ func run() (e error) {
 	logger := slog.New(slog.NewJSONHandler(file, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	logger = logger.With("version", "1.0.0")
 	slog.SetDefault(logger)
-	/* Servers */
+	/* loading agent */
 	slog.Info("Loading GitFresh Agent")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
+	/* tunnel to localserver  channel communication */
 	ch := make(chan string)
+	defer close(ch)
+	/* Check tunnel and localserver status */
+	var wg sync.WaitGroup
+	wg.Add(2)
+	errch := make(chan error, 2)
+	done := make(chan struct{})
+	/* Start internet tunnel */
 	go func() {
 		slog.Info("Start Internet Tunnel")
 		userPath, err := os.UserHomeDir()
@@ -55,35 +65,39 @@ func run() (e error) {
 				Path: path,
 			},
 		)
-		if err := tunnel(ctx, ch, appConfig); err != nil {
-			e = err
+		if err := tunnel(context.Background(), ch, appConfig, &wg); err != nil {
 			slog.Error("tunnel failed", "error", err.Error())
-			cancel()
+			errch <- err
 		}
 	}()
+	/* Start localserver */
 	go func() {
 		slog.Info("Start Local Serve")
-		if err := localserver(ch); err != nil {
-			e = err
+		if err := localserver(ch, &wg); err != nil {
 			slog.Error("localserver failed", "error", err.Error())
-			cancel()
+			errch <- err
 		}
 	}()
-	<-ctx.Done()
-	switch ctx.Err() {
-	case context.DeadlineExceeded:
-		slog.Error("tunnel timeout", "error", ctx.Err().Error())
-	case context.Canceled:
-		slog.Error("context cancelled by force", "error", ctx.Err().Error())
-	default:
-		slog.Error("default context cause", "error", ctx.Err().Error())
+	/* Waiting for tunnel and localserver */
+	go func() {
+		wg.Wait()
+		done <- struct{}{}
+	}()
+	/* Waiting timeout or tunnel & localserver started successfully */
+	select {
+	case <-ctx.Done():
+		slog.Error("context done", "error", ctx.Err().Error())
+		return ctx.Err()
+	case <-done:
+		slog.Info("servers are ready")
 	}
-	println("localserver or tunnel failed")
-	return e
+	/* Waiting for errors from  tunnel or localserver */
+	return <-errch
 }
 
-func localserver(ch <-chan string) error {
+func localserver(ch chan string, wg *sync.WaitGroup) error {
 	url := <-ch
+	slog.Info("startup Local Serve then tunnel started")
 	server := &http.Server{
 		Addr: gitfresh.API_AGENT_HOST,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -92,13 +106,23 @@ func localserver(ch <-chan string) error {
 			w.Write([]byte(data))
 		}),
 	}
-	msg := "LocalServer Listening on " + server.Addr
-	println(msg)
-	slog.Info(msg)
-	return server.ListenAndServe()
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		slog.Error("listening server", "error", err.Error())
+		return err
+	}
+	slog.Info("channel done comunication")
+	wg.Done()
+	println("LocalServer Listening on " + server.Addr)
+	slog.Info("LocalServer Listening on " + server.Addr)
+	return server.Serve(listener)
 }
 
-func tunnel(ctx context.Context, ch chan<- string, appConfig *gitfresh.AppConfigSvc) error {
+func tunnel(ctx context.Context,
+	ch chan<- string,
+	appConfig *gitfresh.AppConfigSvc,
+	wg *sync.WaitGroup,
+) error {
 	conf, err := appConfig.ReadConfigFile()
 	if err != nil {
 		slog.Error(err.Error())
@@ -114,9 +138,11 @@ func tunnel(ctx context.Context, ch chan<- string, appConfig *gitfresh.AppConfig
 		ngrok.WithAuthtokenFromEnv(),
 	)
 	if err != nil {
+		slog.Error("listening tunnel", "error", err.Error())
 		return err
 	}
 	ch <- listener.URL()
+	wg.Done()
 	println("Tunnel Listening on " + listener.URL())
 	slog.Info("Tunnel Listening on " + listener.URL())
 	return http.Serve(listener, handler(appConfig))
