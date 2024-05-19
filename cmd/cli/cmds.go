@@ -17,7 +17,7 @@ type AppFlags struct {
 	GitWorkDir     string `name:"GitWorkDir" description:"Your Git working directory where you have all repositories.\nFor example: /users/lio/code . Type the absolute path.\nIf you don't enter a GitWorkDir, then GitFresh assumes that your GitWorkDir is your current directory. \n"`
 }
 
-func configCmd(flags *AppFlags) error {
+func configCmd(appConfigSvc *gitfresh.AppConfigSvc, flags *AppFlags) error {
 	if flags.TunnelToken == "" {
 		flags.TunnelToken = PromptSecret("Type the TunnelToken (Ngrok):", true)
 	}
@@ -46,7 +46,7 @@ func configCmd(flags *AppFlags) error {
 		GitWorkDir:     flags.GitWorkDir,
 		GitHookSecret:  gitfresh.WebHookSecret(),
 	}
-	_, err := gitfresh.CreateConfigFile(config)
+	err := appConfigSvc.CreateConfigFile(config)
 	if err != nil {
 		slog.Error("creating config file")
 		slog.Error(err.Error())
@@ -57,8 +57,13 @@ func configCmd(flags *AppFlags) error {
 	return nil
 }
 
-func initCmd(repoSvc *gitfresh.GitRepositorySvc, agentSvc *gitfresh.AgentSvc) error {
-	config, err := gitfresh.ReadConfigFile()
+func initCmd(
+	repoSvc *gitfresh.GitRepositorySvc,
+	agentSvc *gitfresh.AgentSvc,
+	appConfigSvc *gitfresh.AppConfigSvc,
+	gitServerSvc *gitfresh.GitServerSvc,
+) error {
+	config, err := appConfigSvc.ReadConfigFile()
 	if err != nil {
 		return err
 	}
@@ -80,10 +85,18 @@ func initCmd(repoSvc *gitfresh.GitRepositorySvc, agentSvc *gitfresh.AgentSvc) er
 		renderVerbose("Starting GitFresh Agent...")
 		pid, err := agentSvc.StartAgent()
 		if err != nil {
+			println(err.Error())
+			slog.Info("okaS")
 			slog.Error(err.Error())
 			return err
 		}
-		agentSvc.SaveAgentPID(pid)
+		pid, err = agentSvc.SaveAgentPID(pid)
+		if err != nil {
+			println(err.Error())
+			slog.Info("ok")
+			slog.Error(err.Error(), "pid", pid)
+			return err
+		}
 		tick.Reset(time.Second * 3)
 	}
 	/* Status check */
@@ -96,14 +109,14 @@ func initCmd(repoSvc *gitfresh.GitRepositorySvc, agentSvc *gitfresh.AgentSvc) er
 	if config.TunnelDomain == "" {
 		println("Saving TunnelDomain")
 		config.TunnelDomain = agent.TunnelDomain
-		_, err := gitfresh.CreateConfigFile(config)
+		err := appConfigSvc.CreateConfigFile(config)
 		if err != nil {
 			return err
 		}
 	}
 	fRepos := []*gitfresh.GitRepository{}
 	for i, r := range repos {
-		if err := gitfresh.CreateGitServerHook(r, config); err != nil {
+		if err := gitServerSvc.CreateGitServerHook(r, config); err != nil {
 			slog.Error(err.Error())
 			continue
 		}
@@ -120,8 +133,12 @@ func initCmd(repoSvc *gitfresh.GitRepositorySvc, agentSvc *gitfresh.AgentSvc) er
 	return nil
 }
 
-func scanCmd(repoSvc *gitfresh.GitRepositorySvc) error {
-	config, err := gitfresh.ReadConfigFile()
+func scanCmd(
+	repoSvc *gitfresh.GitRepositorySvc,
+	appConfigSvc *gitfresh.AppConfigSvc,
+	gitServerSvc *gitfresh.GitServerSvc,
+) error {
+	config, err := appConfigSvc.ReadConfigFile()
 	if err != nil {
 		return err
 	}
@@ -134,7 +151,7 @@ func scanCmd(repoSvc *gitfresh.GitRepositorySvc) error {
 	}
 	fRepos := []*gitfresh.GitRepository{}
 	for i, r := range repos {
-		if err := gitfresh.CreateGitServerHook(r, config); err != nil {
+		if err := gitServerSvc.CreateGitServerHook(r, config); err != nil {
 			slog.Error(err.Error())
 			continue
 		}

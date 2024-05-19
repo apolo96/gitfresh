@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/apolo96/gitfresh"
 	"golang.ngrok.com/ngrok"
@@ -19,7 +20,7 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		slog.Error(err.Error())
+		fmt.Fprintf(os.Stderr, "%s\n", err)
 		os.Exit(1)
 	}
 }
@@ -37,25 +38,46 @@ func run() (e error) {
 	slog.SetDefault(logger)
 	/* Servers */
 	slog.Info("Loading GitFresh Agent")
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	ch := make(chan string)
 	go func() {
-		if err := tunnel(ctx, ch); err != nil {
+		slog.Info("Start Internet Tunnel")
+		userPath, err := os.UserHomeDir()
+		if err != nil {
+			slog.Error("error getting user home directory", "error", err.Error())
 			cancel()
-			slog.Error(err.Error())
+		}
+		path := filepath.Join(userPath, gitfresh.APP_FOLDER)
+		appConfig := gitfresh.NewAppConfigSvc(
+			logger, &gitfresh.FlatFile{
+				Name: gitfresh.APP_CONFIG_FILE_NAME,
+				Path: path,
+			},
+		)
+		if err := tunnel(ctx, ch, appConfig); err != nil {
 			e = err
+			slog.Error("tunnel failed", "error", err.Error())
+			cancel()
 		}
 	}()
 	go func() {
+		slog.Info("Start Local Serve")
 		if err := localserver(ch); err != nil {
-			cancel()
-			slog.Error(err.Error())
 			e = err
+			slog.Error("localserver failed", "error", err.Error())
+			cancel()
 		}
 	}()
 	<-ctx.Done()
-	slog.Error("localserver or tunnel failed", "error", e.Error())
+	switch ctx.Err() {
+	case context.DeadlineExceeded:
+		slog.Error("tunnel timeout", "error", ctx.Err().Error())
+	case context.Canceled:
+		slog.Error("context cancelled by force", "error", ctx.Err().Error())
+	default:
+		slog.Error("default context cause", "error", ctx.Err().Error())
+	}
 	println("localserver or tunnel failed")
 	return e
 }
@@ -76,8 +98,8 @@ func localserver(ch <-chan string) error {
 	return server.ListenAndServe()
 }
 
-func tunnel(ctx context.Context, ch chan<- string) error {
-	conf, err := gitfresh.ReadConfigFile()
+func tunnel(ctx context.Context, ch chan<- string, appConfig *gitfresh.AppConfigSvc) error {
+	conf, err := appConfig.ReadConfigFile()
 	if err != nil {
 		slog.Error(err.Error())
 		return err
@@ -95,45 +117,46 @@ func tunnel(ctx context.Context, ch chan<- string) error {
 		return err
 	}
 	ch <- listener.URL()
-	msg := "Tunnel Listening on " + listener.URL()
-	println(msg)
-	slog.Info(msg)
-	return http.Serve(listener, http.HandlerFunc(handler))
+	println("Tunnel Listening on " + listener.URL())
+	slog.Info("Tunnel Listening on " + listener.URL())
+	return http.Serve(listener, handler(appConfig))
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("X-GitHub-Event") == "ping" {
-		slog.Info("handling ping", "hook_id", r.Header.Get("X-GitHub-Hook-ID"))
-		w.WriteHeader(http.StatusOK)
-		return
-	}
-	slog.Info("handling webhook", "hook_id", r.Header.Get("X-GitHub-Hook-ID"))
-	form, err := io.ReadAll(r.Body)
-	if err != nil {
-		slog.Error(err.Error())
-		http.Error(w, "error reading request data", http.StatusBadRequest)
-		return
-	}
-	var p gitfresh.APIPayload
-	if err := json.Unmarshal([]byte(form), &p); err != nil {
-		slog.Error(err.Error())
-		http.Error(w, "error parsing data form", http.StatusBadRequest)
-		return
-	}
-	slog.Info(
-		"payload form data",
-		"branch", p.Ref,
-		"repository", p.Repository.Name,
-		"last_commit", p.Commit[:7],
-	)
-	w.WriteHeader(http.StatusOK)
-	go func() {
-		conf, err := gitfresh.ReadConfigFile()
+func handler(appConfig *gitfresh.AppConfigSvc) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-GitHub-Event") == "ping" {
+			slog.Info("handling ping", "hook_id", r.Header.Get("X-GitHub-Hook-ID"))
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		slog.Info("handling webhook", "hook_id", r.Header.Get("X-GitHub-Hook-ID"))
+		form, err := io.ReadAll(r.Body)
 		if err != nil {
 			slog.Error(err.Error())
+			http.Error(w, "error reading request data", http.StatusBadRequest)
+			return
 		}
-		gitPullCmd(conf.GitWorkDir, p.Repository.Name, p.Ref)
-	}()
+		var p gitfresh.APIPayload
+		if err := json.Unmarshal([]byte(form), &p); err != nil {
+			slog.Error(err.Error())
+			http.Error(w, "error parsing data form", http.StatusBadRequest)
+			return
+		}
+		slog.Info(
+			"payload form data",
+			"branch", p.Ref,
+			"repository", p.Repository.Name,
+			"last_commit", p.Commit[:7],
+		)
+		w.WriteHeader(http.StatusOK)
+		go func() {
+			conf, err := appConfig.ReadConfigFile()
+			if err != nil {
+				slog.Error(err.Error())
+			}
+			gitPullCmd(conf.GitWorkDir, p.Repository.Name, p.Ref)
+		}()
+	})
 }
 
 func gitPullCmd(workdir, repoName, branch string) (err error) {

@@ -69,13 +69,11 @@ func (m *MockAppOS) WalkDirFunc(path string, fn func(string)) error {
 
 /* MockClient */
 type MockClient struct {
+	DoFunc func(req *http.Request) (*http.Response, error)
 }
 
 func (m *MockClient) Do(req *http.Request) (*http.Response, error) {
-	return &http.Response{
-		StatusCode: 200,
-		Body:       io.NopCloser(strings.NewReader(fmt.Sprintf(`{"api_version":"1.0.0", "tunnel_domain":"%s"}`, tunnelURL))),
-	}, nil
+	return m.DoFunc(req)
 }
 
 /* Table Tests */
@@ -134,47 +132,6 @@ func TestMain(m *testing.M) {
 	/* Global Act */
 	out := m.Run()
 	os.Exit(out)
-}
-
-func Test_createConfigFile(t *testing.T) {
-	const token = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	type args struct {
-		config *AppConfig
-	}
-	tests := []struct {
-		name     string
-		args     args
-		wantFile string
-		wantErr  bool
-	}{
-		{
-			name: "create config file successfully",
-			args: args{
-				&AppConfig{
-					TunnelToken:    token,
-					TunnelDomain:   "",
-					GitServerToken: token,
-					GitWorkDir:     filepath.Join(T_USERHOME_DIR, "code"),
-					GitHookSecret:  WebHookSecret(),
-				},
-			},
-			wantFile: filepath.Join(T_USERHOME_DIR, APP_FOLDER, APP_CONFIG_FILE_NAME),
-			wantErr:  false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotFile, err := CreateConfigFile(tt.args.config)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("createConfigFile() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if gotFile != tt.wantFile {
-				t.Errorf("createConfigFile() = %v, want %v", gotFile, tt.wantFile)
-			}
-			os.RemoveAll(gotFile)
-		})
-	}
 }
 
 /* Tests GitRepository SVC */
@@ -283,7 +240,12 @@ func TestGitRepositorySvc_SaveRepositories(t *testing.T) {
 
 /* Tests Agent SVC */
 func TestAgentSvc_CheckAgentStatus(t *testing.T) {
-	/* MockFlatFile for Agent */
+	mockClient := &MockClient{DoFunc: func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: 200,
+			Body:       io.NopCloser(strings.NewReader(fmt.Sprintf(`{"api_version":"1.0.0", "tunnel_domain":"%s"}`, tunnelURL))),
+		}, nil
+	}}
 	type fields struct {
 		logs       AppLogger
 		appOS      OSCommander
@@ -306,7 +268,7 @@ func TestAgentSvc_CheckAgentStatus(t *testing.T) {
 				logs:       slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})),
 				appOS:      mockAppOS,
 				fileStore:  tFileStoreAgent,
-				httpClient: &MockClient{},
+				httpClient: mockClient,
 			},
 			args: args{
 				tick: time.NewTicker(time.Millisecond),
@@ -471,13 +433,24 @@ func TestAgentSvc_SaveAgentPID(t *testing.T) {
 }
 
 /* Tests GitServer SVC */
-func Test_createGitServerHook(t *testing.T) {
+func TestGitServerSvc_CreateGitServerHook(t *testing.T) {
+	mockClient := &MockClient{DoFunc: func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: 201,
+			Body:       io.NopCloser(strings.NewReader("")),
+		}, nil
+	}}
+	type fields struct {
+		logs       AppLogger
+		httpClient HttpClienter
+	}
 	type args struct {
 		repo   *GitRepository
 		config *AppConfig
 	}
 	tests := []struct {
 		name    string
+		fields  fields
 		args    args
 		wantErr bool
 	}{
@@ -493,16 +466,24 @@ func Test_createGitServerHook(t *testing.T) {
 					TunnelDomain:   os.Getenv("NGROK_DOMAIN"),
 					GitServerToken: os.Getenv("GITHUB_TOKEN"),
 					GitWorkDir:     "",
-					GitHookSecret:  "GITFRESH010231",
+					GitHookSecret:  WebHookSecret(),
 				},
+			},
+			fields: fields{
+				logs:       slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true})),
+				httpClient: mockClient,
 			},
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := CreateGitServerHook(tt.args.repo, tt.args.config); (err != nil) != tt.wantErr {
-				t.Errorf("createGitServerHook() error = %v, wantErr %v", err, tt.wantErr)
+			svc := GitServerSvc{
+				logs:       tt.fields.logs,
+				httpClient: tt.fields.httpClient,
+			}
+			if err := svc.CreateGitServerHook(tt.args.repo, tt.args.config); (err != nil) != tt.wantErr {
+				t.Errorf("GitServerSvc.CreateGitServerHook() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

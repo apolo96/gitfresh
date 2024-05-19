@@ -6,7 +6,7 @@ import (
 	"github.com/apolo96/gitfresh"
 )
 
-var Verbose bool
+var Verbose bool = true
 
 func renderVerbose(text string) {
 	if Verbose {

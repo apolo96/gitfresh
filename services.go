@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"math/rand"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -17,7 +16,19 @@ import (
 )
 
 /* GitServer */
-func CreateGitServerHook(repo *GitRepository, config *AppConfig) error {
+type GitServerSvc struct {
+	logs       AppLogger
+	httpClient HttpClienter
+}
+
+func NewGitServerSvc(l AppLogger, c HttpClienter) *GitServerSvc {
+	return &GitServerSvc{
+		logs:       l,
+		httpClient: c,
+	}
+}
+
+func (svc GitServerSvc) CreateGitServerHook(repo *GitRepository, config *AppConfig) error {
 	url := "https://api.github.com/repos/" + filepath.Join(repo.Owner, repo.Name, "hooks")
 	webhook := Webhook{
 		Name:   "web",
@@ -32,30 +43,29 @@ func CreateGitServerHook(repo *GitRepository, config *AppConfig) error {
 	}
 	jsonData, err := json.Marshal(webhook)
 	if err != nil {
-		slog.Error(err.Error())
+		svc.logs.Error(err.Error())
 		return err
 	}
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
 	if err != nil {
-		slog.Error(err.Error())
+		svc.logs.Error(err.Error())
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+config.GitServerToken)
 	req.Header.Set("Accept", "*/*")
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
-	client := &http.Client{Timeout: time.Second * 20}
-	resp, err := client.Do(req)
+	resp, err := svc.httpClient.Do(req)
 	if err != nil {
-		slog.Error(err.Error())
+		svc.logs.Error(err.Error())
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusCreated {
-		slog.Info(string(jsonData))
-		slog.Info(url)
+		svc.logs.Info(string(jsonData))
+		svc.logs.Info(url)
 		rb, _ := io.ReadAll(resp.Body)
-		slog.Info(string(rb))
+		svc.logs.Info(string(rb))
 		if resp.StatusCode == http.StatusUnprocessableEntity {
 			var errResponse struct {
 				Message string `json:"message"`
@@ -68,12 +78,12 @@ func CreateGitServerHook(repo *GitRepository, config *AppConfig) error {
 			}
 			err := json.Unmarshal(rb, &errResponse)
 			if err != nil {
-				slog.Error(err.Error())
+				svc.logs.Error(err.Error())
 			}
 			for _, e := range errResponse.Errors {
 				if e.Resource == "Hook" {
 					if strings.Contains(e.Message, "already exists") {
-						slog.Info(e.Message, "repo", repo.Name)
+						svc.logs.Info(e.Message, "repo", repo.Name)
 						return nil
 					}
 				}
@@ -82,16 +92,6 @@ func CreateGitServerHook(repo *GitRepository, config *AppConfig) error {
 		return errors.New("creating webhook via http, response with " + resp.Status)
 	}
 	return nil
-}
-
-func WebHookSecret() string {
-	const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	rand.New(rand.NewSource(time.Now().UnixNano()))
-	secret := make([]byte, 10)
-	for i := range secret {
-		secret[i] = alpha[rand.Intn(len(alpha))]
-	}
-	return string(secret)
 }
 
 /* Agent */
@@ -185,37 +185,38 @@ func (svc AgentSvc) CheckAgentStatus(tick *time.Ticker) (Agent, error) {
 }
 
 /* AppConfig */
-func CreateConfigFile(config *AppConfig) (file string, err error) {
-	dirname, err := os.UserHomeDir()
-	if err != nil {
-		println("error getting user home directory")
-		slog.Error(err.Error())
-		return file, err
-	}
-	content, err := json.MarshalIndent(config, "", "  ")
-	slog.Debug("parsing config parameters", "data", string(content))
-	if err != nil {
-		println("error parsing the config parameters")
-		slog.Error(err.Error())
-		return file, err
-	}
-	fl := &FlatFile{Name: APP_CONFIG_FILE_NAME, Path: filepath.Join(dirname, APP_FOLDER)}
-	_, err = fl.Write(content)
-	if err != nil {
-		return filepath.Join(fl.Path, fl.Name), err
-	}
-	slog.Info("config file created successfully")
-	return file, nil
+type AppConfigSvc struct {
+	logs      AppLogger
+	fileStore FlatFiler
 }
 
-func ReadConfigFile() (*AppConfig, error) {
-	dirname, err := os.UserHomeDir()
-	config := &AppConfig{}
-	if err != nil {
-		return config, err
+func NewAppConfigSvc(l AppLogger, f FlatFiler) *AppConfigSvc {
+	return &AppConfigSvc{
+		logs:      l,
+		fileStore: f,
 	}
-	fl := &FlatFile{Name: APP_CONFIG_FILE_NAME, Path: filepath.Join(dirname, APP_FOLDER)}
-	file, err := fl.Read()
+}
+
+func (svc AppConfigSvc) CreateConfigFile(config *AppConfig) error {
+	content, err := json.MarshalIndent(config, "", "  ")
+	svc.logs.Debug("parsing config parameters", "data", string(content))
+	if err != nil {
+		println("error parsing the config parameters")
+		svc.logs.Error(err.Error())
+		return err
+	}
+	//&FlatFile{Name: APP_CONFIG_FILE_NAME, Path: filepath.Join(dirname, APP_FOLDER)}
+	_, err = svc.fileStore.Write(content)
+	if err != nil {
+		return err
+	}
+	svc.logs.Info("config file created successfully")
+	return nil
+}
+
+func (svc AppConfigSvc) ReadConfigFile() (*AppConfig, error) {
+	config := &AppConfig{}
+	file, err := svc.fileStore.Read()
 	if err != nil {
 		return config, err
 	}
@@ -286,4 +287,14 @@ func (gr GitRepositorySvc) SaveRepositories(repos []*GitRepository) (n int, err 
 		return n, err
 	}
 	return n, nil
+}
+
+func WebHookSecret() string {
+	const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+	secret := make([]byte, 10)
+	for i := range secret {
+		secret[i] = alpha[rand.Intn(len(alpha))]
+	}
+	return string(secret)
 }
