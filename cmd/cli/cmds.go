@@ -170,7 +170,8 @@ func statusCmd(agentSvc *gitfresh.AgentSvc) error {
 	ok, err := agentSvc.IsAgentRunning()
 	tick := time.NewTicker(time.Microsecond)
 	if !ok {
-		println("❌ GitFresh Agent is not running!")
+		println("❌ GitFresh Agent is not running!\n")
+		println("Please, run the follow command:\n\n gitfresh init \n")
 		if err != nil {
 			return err
 		}
