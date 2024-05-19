@@ -15,9 +15,9 @@ func main() {
 }
 
 func run() error {
-	gitServerSvc, agentSvc, appConfigSvc, gitRepoSvc, logger, err := serviceProvider()
-	slog.SetDefault(logger)
-	slog.Info("oko")
+	svcProvider, err := NewServiceProvider()
+	slog.SetDefault(svcProvider.logger.log)
+	defer svcProvider.logger.closer()
 	if err != nil {
 		println("error: loading service provider")
 		return err
@@ -29,22 +29,31 @@ func run() error {
 	config := cli.NewSubCommand("config", "Configure the application parameters")
 	config.AddFlags(flags)
 	config.Action(func() error {
-		return configCmd(appConfigSvc, flags)
+		return configCmd(svcProvider.appConfig, flags)
 	})
 	/* Init Command */
 	initCommand := cli.NewSubCommand("init", "Initialise the workspace and agent")
 	initCommand.Action(func() error {
-		return initCmd(gitRepoSvc, agentSvc, appConfigSvc, gitServerSvc)
+		return initCmd(
+			svcProvider.gitRepository,
+			svcProvider.agent,
+			svcProvider.appConfig,
+			svcProvider.gitServer,
+		)
 	})
 	/* Scan Command */
 	scan := cli.NewSubCommand("scan", "Discover new repositories to refresh")
 	scan.Action(func() error {
-		return scanCmd(gitRepoSvc, appConfigSvc, gitServerSvc)
+		return scanCmd(
+			svcProvider.gitRepository,
+			svcProvider.appConfig,
+			svcProvider.gitServer,
+		)
 	})
 	/* Status Command */
 	status := cli.NewSubCommand("status", "Check agent status")
 	status.Action(func() error {
-		return statusCmd(agentSvc)
+		return statusCmd(svcProvider.agent)
 	})
 	return cli.Run()
 }

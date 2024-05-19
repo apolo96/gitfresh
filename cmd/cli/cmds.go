@@ -85,16 +85,14 @@ func initCmd(
 		renderVerbose("Starting GitFresh Agent...")
 		pid, err := agentSvc.StartAgent()
 		if err != nil {
-			println(err.Error())
-			slog.Info("okaS")
-			slog.Error(err.Error())
+			renderVerbose(err.Error())
+			slog.Error("starting agent", "error", err.Error())
 			return err
 		}
 		pid, err = agentSvc.SaveAgentPID(pid)
 		if err != nil {
-			println(err.Error())
-			slog.Info("ok")
-			slog.Error(err.Error(), "pid", pid)
+			renderVerbose(err.Error())
+			slog.Error("saving process id", "error", err.Error(), "pid", pid)
 			return err
 		}
 		tick.Reset(time.Second * 3)

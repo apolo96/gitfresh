@@ -10,27 +10,33 @@ import (
 	"github.com/apolo96/gitfresh"
 )
 
-func serviceProvider() (
-	*gitfresh.GitServerSvc,
-	*gitfresh.AgentSvc,
-	*gitfresh.AppConfigSvc,
-	*gitfresh.GitRepositorySvc,
-	*slog.Logger,
-	error,
-) {
+type slogger struct {
+	log    *slog.Logger
+	closer func()
+}
+
+type ServiceProvider struct {
+	gitServer     *gitfresh.GitServerSvc
+	agent         *gitfresh.AgentSvc
+	appConfig     *gitfresh.AppConfigSvc
+	gitRepository *gitfresh.GitRepositorySvc
+	logger        slogger
+}
+
+func NewServiceProvider() (ServiceProvider, error) {
 	/* Logger */
 	file, closer, err := gitfresh.NewLogFile(gitfresh.APP_CLI_LOG_FILE)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return ServiceProvider{}, err
 	}
-	defer closer()
 	logger := slog.New(slog.NewJSONHandler(file, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	logger = logger.With("version", "1.0.0")
 	/* Config */
 	userPath, err := os.UserHomeDir()
 	if err != nil {
 		slog.Error("error getting user home directory", "error", err.Error())
-		return nil, nil, nil, nil, nil, err
+		defer closer()
+		return ServiceProvider{}, err
 	}
 	path := filepath.Join(userPath, gitfresh.APP_FOLDER)
 	/* Services Provider */
@@ -52,5 +58,17 @@ func serviceProvider() (
 	)
 	appConfigSvc := gitfresh.NewAppConfigSvc(logger, &gitfresh.FlatFile{Name: gitfresh.APP_CONFIG_FILE_NAME, Path: path})
 	gitServerSvc := gitfresh.NewGitServerSvc(logger, &http.Client{Timeout: time.Second * 3})
-	return gitServerSvc, agentSvc, appConfigSvc, gitRepoSvc, logger, nil
+	sp := ServiceProvider{
+		gitServer:     gitServerSvc,
+		agent:         agentSvc,
+		appConfig:     appConfigSvc,
+		gitRepository: gitRepoSvc,
+		logger: slogger{
+			log: logger,
+			closer: func() {
+				closer()
+			},
+		},
+	}
+	return sp, nil
 }
