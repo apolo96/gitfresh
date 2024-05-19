@@ -1,6 +1,7 @@
 package gitfresh
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -22,7 +23,7 @@ type OSDirer interface {
 type OSCommander interface {
 	OSRunner
 	OSPather
-	StartProgram(path string, workdir string, args ...string) (int, error)
+	StartProgram(path string, args ...string) (int, error)
 	UserHomePath() (string, error)
 	FindProgram(pid int) (bool, error)
 }
@@ -62,11 +63,18 @@ func (AppOS) UserHomePath() (string, error) {
 	return os.UserHomeDir()
 }
 
-func (AppOS) StartProgram(path string, workdir string, args ...string) (int, error) {
-	cmd := exec.Command(path, args...)
-	cmd.Dir = workdir
+func (AppOS) StartProgram(path string, args ...string) (int, error) {
+	cmd := exec.Command(path)
 	if err := cmd.Start(); err != nil {
-		slog.Error("starting program", "error", err.Error(), "path", path, "args", args)
+		slog.Info(os.Getwd())
+		slog.LogAttrs(
+			context.Background(),
+			slog.LevelError,
+			"starting program",
+			slog.String("error", err.Error()),
+			slog.String("path", path),
+			slog.Any("args", args),
+		)
 		return 0, err
 	}
 	slog.Info("running process", "pid", cmd.Process.Pid)

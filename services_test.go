@@ -38,13 +38,13 @@ type MockAppOS struct {
 	RunFunc          func(path string, workdir string, args ...string) ([]byte, error)
 	LookFunc         func(cmd string) (string, error)
 	WalkFuncMock     func(path string, fn func(string)) error
-	StartFunc        func(path string, workdir string, args ...string) (int, error)
+	StartFunc        func(path string, args ...string) (int, error)
 	UserHomePathFunc func() (string, error)
 	FindProgramFunc  func(pid int) (bool, error)
 }
 
-func (m *MockAppOS) StartProgram(path string, workdir string, args ...string) (int, error) {
-	return m.StartFunc(path, workdir, args...)
+func (m *MockAppOS) StartProgram(path string, args ...string) (int, error) {
+	return m.StartFunc(path, args...)
 }
 
 func (m *MockAppOS) UserHomePath() (string, error) {
@@ -122,7 +122,7 @@ func TestMain(m *testing.M) {
 		FindProgramFunc: func(pid int) (bool, error) {
 			return true, nil
 		},
-		StartFunc: func(path, workdir string, args ...string) (int, error) {
+		StartFunc: func(path string, args ...string) (int, error) {
 			return tPID, nil
 		},
 		UserHomePathFunc: func() (string, error) {
