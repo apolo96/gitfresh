@@ -136,6 +136,7 @@ func (svc AgentSvc) SaveAgentPID(pid int) (int, error) {
 }
 
 func (svc AgentSvc) StartAgent() (int, error) {
+	//path := "./api"
 	path, err := svc.appOS.LookProgram("gitfreshd")
 	if err != nil {
 		slog.Error("getting agent os path", "error", err.Error())
