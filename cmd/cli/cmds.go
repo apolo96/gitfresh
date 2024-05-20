@@ -82,7 +82,7 @@ func initCmd(
 	ok, err := agentSvc.IsAgentRunning()
 	tick := time.NewTicker(time.Microsecond)
 	if !ok && err != nil {
-		renderVerbose("Starting GitFresh Agent...")
+		renderVerbose("\nStarting GitFresh Agent...")
 		pid, err := agentSvc.StartAgent()
 		if err != nil {
 			renderVerbose(err.Error())
@@ -98,12 +98,12 @@ func initCmd(
 		tick.Reset(time.Second * 3)
 	}
 	/* Status check */
-	renderVerbose("Checking GitFresh Agent Status...")
+	renderVerbose("\nChecking GitFresh Agent Status...")
 	agent, err := agentSvc.CheckAgentStatus(tick)
 	if err != nil {
 		return err
 	}
-	renderVerbose("GitFresh Agent is running!")
+	renderVerbose("\nGitFresh Agent is running!")
 	if config.TunnelDomain == "" {
 		println("Saving TunnelDomain")
 		config.TunnelDomain = agent.TunnelDomain
@@ -171,16 +171,18 @@ func statusCmd(agentSvc *gitfresh.AgentSvc) error {
 	tick := time.NewTicker(time.Microsecond)
 	if !ok {
 		println("❌ GitFresh Agent is not running!\n")
-		println("Please, run the follow command:\n\n gitfresh init \n")
+		println("Please, run the following command:\n\n gitfresh init \n")
 		if err != nil {
+			slog.Error("checking agent process", "error", err.Error())
 			return err
 		}
 	}
 	println("Checking GitFresh Agent Status...")
 	_, err = agentSvc.CheckAgentStatus(tick)
 	if err != nil {
+		slog.Error("checking agent status", "error", err.Error())
 		return err
 	}
-	println("✅ GitFresh Agent is running!")
+	println("\n✅ GitFresh Agent is running!\n")
 	return nil
 }
