@@ -1,0 +1,89 @@
+version: 1
+
+project_name: gitfresh
+
+before:
+  hooks:
+    - go mod tidy
+    - go vet ./...
+
+builds:
+  - main: ./cmd/cli
+    id: "gitfresh"
+    binary: gitfresh    
+    env:
+        - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - "386"
+      - amd64
+      - arm
+      - arm64      
+    goarm:
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm
+
+  - main: ./cmd/api
+    id: "gitfreshd"
+    env:
+        - CGO_ENABLED=0
+    binary: gitfreshd    
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - "386"
+      - amd64
+      - arm
+      - arm64      
+    goarm:
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm
+
+archives:
+  - format: tar.gz
+    # this name template makes the OS and Arch compatible with the results of `uname`.
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  github:
+    owner: apolo96    
+brews:
+  - repository:
+        owner: apolo96
+        name: homebrew-tap
+    directory: Formula
+    name: gitfresh    
+    goarm: "7"
+    homepage: https://github.com/apolo96/xwdgrap
+    description: A DX Tool to keep the git repositories updated
+    license: MIT
+    test: |
+      system "#{bin}/gitfresh version"
+    dependencies:      
+      - name: git    
