@@ -154,26 +154,28 @@ func (svc AgentSvc) CheckAgentStatus(tick *time.Ticker) (Agent, error) {
 		return agent, err
 	}
 	var respBody io.ReadCloser
-	times := 5
+	var resp *http.Response
+	times := 3
 	for {
 		<-tick.C
 		if times <= 0 {
 			return agent, errors.New("timeout checking agent status")
 		}
-		resp, err := svc.httpClient.Do(req)
+		resp, err = svc.httpClient.Do(req)
 		if err != nil {
+			times--
 			slog.Error(err.Error())
 			continue
 		}
-		if resp.StatusCode == http.StatusOK {
-			respBody = resp.Body
-			tick.Stop()
-			break
-		}
-		times--
-		slog.Error(resp.Status)
+		break
 	}
-
+	if resp.StatusCode != http.StatusOK {
+		slog.Error("error response", "status", resp.Status)
+		return agent, errors.New("http response " + resp.Status)
+	}
+	respBody = resp.Body
+	defer resp.Body.Close()
+	tick.Stop()
 	body, _ := io.ReadAll(respBody)
 	if err := json.Unmarshal(body, &agent); err != nil {
 		slog.Error(err.Error())
