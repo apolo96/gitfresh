@@ -1,7 +1,6 @@
 package gitfresh
 
 import (
-	"errors"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -45,16 +44,12 @@ func (f *FlatFile) Write(data []byte) (n int, err error) {
 		slog.Error(err.Error())
 		return 0, err
 	}
-	slog.Info("config file created successfully")
+	slog.Info("config file created successfully", "path", f.Path, "file", f.Name)
 	return len(data), nil
 }
 
 func (f *FlatFile) Read() (n []byte, err error) {
 	path := filepath.Join(f.Path, f.Name)
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		slog.Info("creating directory")
-		_ = os.Mkdir(path, os.ModePerm)
-	}
 	file, err := os.ReadFile(path)
 	if err != nil {
 		slog.Error(err.Error())
