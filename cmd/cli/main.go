@@ -26,6 +26,12 @@ func run() error {
 	/* CLI */
 	cli := clir.NewCli("gitfresh", "A DX Tool to keep the git repositories updated 😎", "v1.0.0")
 	flags := &AppFlags{}
+	/* Version Command */
+	cli.NewSubCommandFunction("version", "Show cli and agent version", func(_ *struct{}) error {
+		println("🌟 gitfresh version 1.0.0")
+		println("   A Developer Experience Tool to keep the git repositories updated")
+		return nil
+	})
 	/* Config Command */
 	config := cli.NewSubCommand("config", "Configure the application parameters")
 	config.AddFlags(flags)
