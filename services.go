@@ -30,6 +30,9 @@ func NewGitServerSvc(l AppLogger, c HttpClienter) *GitServerSvc {
 
 func (svc GitServerSvc) CreateGitServerHook(repo *GitRepository, config *AppConfig) error {
 	url := "https://api.github.com/repos/" + filepath.Join(repo.Owner, repo.Name, "hooks")
+	if !strings.Contains(config.TunnelDomain, "https://") {
+		config.TunnelDomain = "https://" + config.TunnelDomain
+	}
 	webhook := Webhook{
 		Name:   "web",
 		Active: true,
