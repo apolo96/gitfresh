@@ -1,29 +1,11 @@
-CLI 
+# GitFresh
+A Developer Experience Tool to Keep Git Repositories Updated 😎
 
-gitfresh init
+## Use Cases
 
-requesting
+## Install
 
-- confirm working directory
-- entry NGROK TOKEN
-- entry NGROK CUSTOM DOMAIN (optional)
-- entry GITHUB TOKEN
+## Quickstart
 
+## How It Works
 
-Step Step
-
-gitfresh config
-
-gitfresh init  
-
-- Scan the GitWorkDir to discovery the git repositories
-- Create repositories.json with all available repos in GitWorkDir
-- Start the local webhook-listener server
-- Create webhook integration on github.com for each available repository.
-
-gitfresh status
-
-list all repositories with your status
-
-repo=app-ngx status=synced updated_date=20/12/11 20:12 msg="successfully updated"
-repo=app-corin status=outdated updated_date=20/12/11 20:12 msg="failed when try update"
