@@ -133,7 +133,7 @@ func tunnel(ctx context.Context,
 	listener, err := ngrok.Listen(ctx,
 		config.HTTPEndpoint(
 			config.WithWebhookVerification("github", conf.GitHookSecret),
-			config.WithDomain("yak-loyal-violently.ngrok-free.app"),
+			config.WithDomain(conf.TunnelDomain),
 		),
 		ngrok.WithAuthtokenFromEnv(),
 	)
