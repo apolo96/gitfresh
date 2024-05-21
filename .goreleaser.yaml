@@ -80,10 +80,8 @@ brews:
     directory: Formula
     name: gitfresh    
     goarm: "7"
-    homepage: https://github.com/apolo96/xwdgrap
+    homepage: https://github.com/apolo96/gitfresh
     description: A DX Tool to keep the git repositories updated
     license: MIT
     test: |
-      system "#{bin}/gitfresh version"
-    dependencies:      
-      - name: git    
+      system "#{bin}/gitfresh version"    
