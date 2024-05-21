@@ -48,20 +48,21 @@ https://dashboard.ngrok.com/get-started/your-authtoken
 
 ### Initialize Workspace
 
-After installing gitfresh via homebrew, you can Initialize a workspace:
+After installing GitFresh via Homebrew and getting GitHub and Ngrok tokens, then you can initialize a workspace:
 
-First, you go to the working directory where your git repositories are.
+First, go to the working directory that contains the Git repositories and run the following command:
 
 ```bash
 gitfresh config
 ```
+
 It opens the CLI Form where you should enter the GitHub and Ngrok tokens.
 
 The TunnelDomain input is OPTIONAL, by default Ngrok generates a random DNS.
 
-If you prefer, you can create a custom domain at https://dashboard.ngrok.com/cloud-edge/domains.
+If you prefer, you can create a custom domain at: 
+https://dashboard.ngrok.com/cloud-edge/domains.
 
-Then, the program takes some seconds for startup services. 
 
 Finally, run the following command:
 
@@ -69,11 +70,11 @@ Finally, run the following command:
 gitfresh init
 ```
 
+This command can take some seconds for startup services. 
+
 ### Add new repository
 
-You can add new GitFresh repositories. 
-
-Run the following command:
+You can add new repositories to Gitfresh. Running the following command:
 
 ```bash
 gitfresh scan
@@ -81,4 +82,4 @@ gitfresh scan
 
 ## How It Works
 
-GitFresh creates GitHub webhooks to receive near real-time notifications through an internet tunnel provided by Ngrok that triggers repository updates on the local machine.
+GitFresh creates GitHub webhooks to send notifications of events git-push through an internet tunnel provided by Ngrok that triggers repository updates on the local machine (gitfresh agent)
