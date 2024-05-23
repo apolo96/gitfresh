@@ -2,7 +2,6 @@ version: 1
 
 project_name: gitfresh
 
-
 builds:
   - main: ./cmd/cli
     id: "gitfresh"
@@ -69,6 +68,7 @@ changelog:
 release:
   github:
     owner: apolo96    
+
 brews:
   - repository:
         owner: apolo96
@@ -81,3 +81,12 @@ brews:
     license: MIT
     test: |
       system "#{bin}/gitfresh version"    
+
+scoops:
+  - repository:
+      owner: apolo96
+      name: scoop-bucket
+    directory: bucket
+    homepage: https://github.com/apolo96/gitfresh
+    description: A DX Tool to keep the git repositories updated
+    license: MIT

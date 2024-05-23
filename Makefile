@@ -12,8 +12,11 @@ test:
 vet:
 	go vet ./...
 
-release: build test vet
-	git tag -d v1.0.0
-	git push origin --delete v1.0.0
-	git tag -a v1.0.0 -m "release v1.0.0"
+release: test vet		
+	goreleaser check
 	goreleaser release --clean
+
+tagging:
+	git push origin --delete v1.0.0
+	git tag -d v1.0.0
+	git tag -a v1.0.0 -m "release v1.0.0"
