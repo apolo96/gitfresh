@@ -80,6 +80,13 @@ You can add new repositories to Gitfresh. Running the following command:
 gitfresh scan
 ```
 
+### Discover the CLI
+
+```bash
+gitfresh -help
+```
+
+
 ## How It Works
 
 GitFresh creates GitHub webhooks to send notifications of events git-push through an internet tunnel provided by Ngrok that triggers repository updates on the local machine (gitfresh agent)
