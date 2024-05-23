@@ -133,6 +133,23 @@ func (svc AgentSvc) IsAgentRunning() (bool, error) {
 	return svc.appOS.FindProgram(pid)
 }
 
+func (svc AgentSvc) StopAgent() error {
+	content, err := svc.fileStore.Read()
+	if err != nil {
+		return err
+	}
+	pidstr := strings.TrimSpace(string(content))
+	if pidstr == "" {
+		return err
+	}
+	pid, err := strconv.Atoi(pidstr)
+	if err != nil {
+		fmt.Println("Error during conversion")
+		return err
+	}
+	return svc.appOS.StopProgram(pid)
+}
+
 func (svc AgentSvc) SaveAgentPID(pid int) (int, error) {
 	return svc.fileStore.Write([]byte(fmt.Sprint(pid)))
 }

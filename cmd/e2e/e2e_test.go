@@ -197,12 +197,57 @@ func TestStatusCommand(t *testing.T) {
 	}
 }
 
-func TestSuccessFlow(t *testing.T) {
-	t.Parallel()
+func TestStopCommand(t *testing.T) {
+	if parallelWithPreparation {
+		t.Skip("Atomic test not supported")
+		t.Parallel()
+		// ToDo: Prepare for Atomic Test
+	}
+	wantErr := false
+	args := []string{"stop"}
+	expected := "The agent stopped"
+	cmd := exec.Command(cliBinaryPath, args...)
+	output, err := cmd.CombinedOutput()
+	if (err != nil) != wantErr {
+		t.Fatalf("executing command failed with error: %v , output %s", err, output)
+	}
+	if !strings.Contains(string(output), expected) {
+		t.Errorf("want %q, but got %q", expected, output)
+	}
+}
+func TestStartCommand(t *testing.T) {
+	if parallelWithPreparation {
+		t.Skip("Atomic test not supported")
+		t.Parallel()
+		// ToDo: Prepare for Atomic Test
+	}
+	wantErr := false
+	args := []string{"start"}
+	expected := "GitFresh Agent is running"
+	cmd := exec.Command(cliBinaryPath, args...)
+	output, err := cmd.CombinedOutput()
+	if (err != nil) != wantErr {
+		t.Fatalf("executing command failed with error: %v , output %s", err, output)
+	}
+	if !strings.Contains(string(output), expected) {
+		t.Errorf("want %q, but got %q", expected, output)
+	}
+}
+
+func TestHappyFlow(t *testing.T) {
 	parallelWithPreparation = false
 	t.Logf("- RUN FLOW WITH parallelWithPreparation: %v", parallelWithPreparation)
 	t.Run("version cli command", TestVersionCLICommand)
 	t.Run("config cli command", TestConfigCommandFlags)
 	t.Run("init cli command", TestInitCommand)
 	t.Run("status cli command", TestStatusCommand)
+	t.Run("stop cli command", TestStopCommand)
+}
+
+func TestStartStopFlow(t *testing.T) {
+	parallelWithPreparation = false
+	t.Logf("- RUN FLOW WITH parallelWithPreparation: %v", parallelWithPreparation)
+	t.Run("config cli command", TestConfigCommandFlags)
+	t.Run("start cli command", TestStartCommand)
+	t.Run("stop cli command", TestStopCommand)
 }

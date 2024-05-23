@@ -24,6 +24,7 @@ type OSCommander interface {
 	OSRunner
 	OSPather
 	StartProgram(path string, args ...string) (int, error)
+	StopProgram(pid int) error
 	UserHomePath() (string, error)
 	FindProgram(pid int) (bool, error)
 }
@@ -91,4 +92,16 @@ func (AppOS) FindProgram(pid int) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func (AppOS) StopProgram(pid int) error {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return err
+	}
+	err = process.Signal(syscall.SIGTERM)
+	if err != nil {
+		return err
+	}
+	return nil
 }

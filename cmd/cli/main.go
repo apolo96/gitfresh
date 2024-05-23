@@ -41,7 +41,7 @@ func run(w io.Writer, args []string) error {
 		return configCmd(svcProvider.appConfig, flags)
 	})
 	/* Init Command */
-	initCommand := cli.NewSubCommand("init", "Initialise the workspace and agent")
+	initCommand := cli.NewSubCommand("init", "Initialise the Workspace and Agent")
 	initCommand.Action(func() error {
 		return initCmd(
 			svcProvider.gitRepository,
@@ -60,9 +60,19 @@ func run(w io.Writer, args []string) error {
 		)
 	})
 	/* Status Command */
-	status := cli.NewSubCommand("status", "Check agent status")
+	status := cli.NewSubCommand("status", "Check Agent Status")
 	status.Action(func() error {
 		return statusCmd(svcProvider.agent)
+	})
+	/* Start Command */
+	start := cli.NewSubCommand("start", "Start the Agent")
+	start.Action(func() error {
+		return startCmd(svcProvider.agent)
+	})
+	/* Stop Command */
+	stop := cli.NewSubCommand("stop", "Stop the Agent")
+	stop.Action(func() error {
+		return stopCmd(svcProvider.agent)
 	})
 	return cli.Run(args...)
 }

@@ -186,3 +186,48 @@ func statusCmd(agentSvc *gitfresh.AgentSvc) error {
 	println("\n✅ GitFresh Agent is running!\n")
 	return nil
 }
+
+func startCmd(agentSvc *gitfresh.AgentSvc) error {
+	/* Start Agent */
+	ok, err := agentSvc.IsAgentRunning()
+	tick := time.NewTicker(time.Microsecond)
+	if !ok && err != nil {
+		renderVerbose("\nStarting GitFresh Agent...")
+		pid, err := agentSvc.StartAgent()
+		if err != nil {
+			renderVerbose(err.Error())
+			slog.Error("starting agent", "error", err.Error())
+			return err
+		}
+		pid, err = agentSvc.SaveAgentPID(pid)
+		if err != nil {
+			renderVerbose(err.Error())
+			slog.Error("saving process id", "error", err.Error(), "pid", pid)
+			return err
+		}
+		tick.Reset(time.Second * 3)
+	}
+	/* Status check */
+	renderVerbose("\nChecking GitFresh Agent Status...")
+	_, err = agentSvc.CheckAgentStatus(tick)
+	if err != nil {
+		slog.Error("checking agent status", "error", err.Error())
+		return err
+	}
+	renderVerbose("\nGitFresh Agent is running!")
+	return nil
+}
+
+func stopCmd(agentSvc *gitfresh.AgentSvc) error {
+	ok, err := agentSvc.IsAgentRunning()
+	if !ok && err != nil {
+		renderVerbose("\nGitFresh Agent is not running!")
+		return nil
+	}
+	if err := agentSvc.StopAgent(); err != nil {
+		fmt.Println("The agent can not be stopped :(")
+		return err
+	}
+	fmt.Println("The agent stopped!")
+	return nil
+}
