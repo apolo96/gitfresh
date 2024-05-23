@@ -53,7 +53,7 @@ func configCmd(appConfigSvc *gitfresh.AppConfigSvc, flags *AppFlags) error {
 		println("ERROR Creating config file")
 		return err
 	}
-	println("✅ Config successfully created! Now, run the following command: \n\n gitfresh init \n")
+	renderText(os.Stdout, "✅ Config successfully created! Now, run the following command: \n\n gitfresh init \n")
 	return nil
 }
 
@@ -126,7 +126,7 @@ func initCmd(
 	if _, err := repoSvc.SaveRepositories(fRepos); err != nil {
 		return err
 	}
-	println("\n🍃 Repositories to Refresh:\n")
+	renderText(os.Stdout, "\n🍃 Repositories to Refresh:\n")
 	renderRepos(fRepos, true)
 	return nil
 }

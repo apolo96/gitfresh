@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/apolo96/gitfresh"
 )
@@ -22,4 +23,8 @@ func renderRepos(rp []*gitfresh.GitRepository, fresh bool) {
 		}
 		fmt.Printf("Repository: %-25s | URL: %-20s\n", r.Name, url)
 	}
+}
+
+func renderText(w io.Writer, s string) {
+	fmt.Fprintln(w, s)
 }

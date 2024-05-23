@@ -48,6 +48,7 @@ func NewServiceProvider() (ServiceProvider, error) {
 			Path: path,
 		},
 	)
+	gitfresh.DevMode = devMode
 	agentSvc := gitfresh.NewAgentSvc(logger,
 		appOS,
 		&gitfresh.FlatFile{

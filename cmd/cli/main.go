@@ -2,20 +2,23 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 
 	"github.com/leaanthony/clir"
 )
 
+var devMode string = "off"
+
 func main() {
-	if err := run(); err != nil {
+	if err := run(os.Stdout, os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "\n%s\n", "error: "+err.Error())
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(w io.Writer, args []string) error {
 	svcProvider, err := NewServiceProvider()
 	slog.SetDefault(svcProvider.logger.log)
 	defer svcProvider.logger.closer()
@@ -28,8 +31,7 @@ func run() error {
 	flags := &AppFlags{}
 	/* Version Command */
 	cli.NewSubCommandFunction("version", "Show cli and agent version", func(_ *struct{}) error {
-		println("🌟 gitfresh version 1.0.0")
-		println("   A Developer Experience Tool to keep the git repositories updated")
+		renderText(w, "🌟 gitfresh version 1.0.0 \n   A Developer Experience Tool to keep the git repositories updated")
 		return nil
 	})
 	/* Config Command */
@@ -62,5 +64,5 @@ func run() error {
 	status.Action(func() error {
 		return statusCmd(svcProvider.agent)
 	})
-	return cli.Run()
+	return cli.Run(args...)
 }

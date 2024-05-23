@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+var DevMode string = "off"
+
 /* GitServer */
 type GitServerSvc struct {
 	logs       AppLogger
@@ -136,11 +138,15 @@ func (svc AgentSvc) SaveAgentPID(pid int) (int, error) {
 }
 
 func (svc AgentSvc) StartAgent() (int, error) {
-	//path := "./api"
-	path, err := svc.appOS.LookProgram("gitfreshd")
-	if err != nil {
-		slog.Error("getting agent os path", "error", err.Error())
-		return 0, err
+	slog.Info("Application RunMode " + DevMode)
+	var path string = "./api"
+	if DevMode == "off" {
+		p, err := svc.appOS.LookProgram("gitfreshd")
+		if err != nil {
+			slog.Error("getting agent os path", "error", err.Error())
+			return 0, err
+		}
+		path = p
 	}
 	pid, err := svc.appOS.StartProgram(path, []string{}...)
 	if err != nil {
@@ -210,7 +216,6 @@ func (svc AppConfigSvc) CreateConfigFile(config *AppConfig) error {
 		svc.logs.Error(err.Error())
 		return err
 	}
-	//&FlatFile{Name: APP_CONFIG_FILE_NAME, Path: filepath.Join(dirname, APP_FOLDER)}
 	_, err = svc.fileStore.Write(content)
 	if err != nil {
 		return err
