@@ -30,3 +30,5 @@
 
 bin/*
 dist/
+
+.env
