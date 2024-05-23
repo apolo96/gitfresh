@@ -4,6 +4,7 @@ go 1.22.1
 
 require (
 	github.com/google/go-cmp v0.6.0
+	github.com/joho/godotenv v1.5.1
 	github.com/leaanthony/clir v1.6.0
 	golang.ngrok.com/ngrok v1.9.1
 )
