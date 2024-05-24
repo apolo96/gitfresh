@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"runtime"
 	"syscall"
 )
 
@@ -87,9 +88,11 @@ func (AppOS) FindProgram(pid int) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	err = process.Signal(os.Signal(syscall.Signal(0)))
-	if err != nil {
-		return false, err
+	if runtime.GOOS != "windows" {
+		err = process.Signal(os.Signal(syscall.Signal(0)))
+		if err != nil {
+			return false, err
+		}
 	}
 	return true, nil
 }
@@ -99,7 +102,7 @@ func (AppOS) StopProgram(pid int) error {
 	if err != nil {
 		return err
 	}
-	err = process.Signal(syscall.SIGTERM)
+	err = process.Kill()
 	if err != nil {
 		return err
 	}
