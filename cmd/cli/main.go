@@ -9,7 +9,7 @@ import (
 	"github.com/leaanthony/clir"
 )
 
-var devMode string = "off"
+var devMode string = "Off"
 
 func main() {
 	if err := run(os.Stdout, os.Args[1:]); err != nil {

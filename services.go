@@ -15,7 +15,7 @@ import (
 	"time"
 )
 
-var DevMode string = "off"
+var DevMode string = "Off"
 
 /* GitServer */
 type GitServerSvc struct {
@@ -31,7 +31,7 @@ func NewGitServerSvc(l AppLogger, c HttpClienter) *GitServerSvc {
 }
 
 func (svc GitServerSvc) CreateGitServerHook(repo *GitRepository, config *AppConfig) error {
-	url := "https://api.github.com/repos/" + filepath.Join(repo.Owner, repo.Name, "hooks")
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/hooks", repo.Owner, repo.Name)
 	if !strings.Contains(config.TunnelDomain, "https://") {
 		config.TunnelDomain = "https://" + config.TunnelDomain
 	}
@@ -155,7 +155,7 @@ func (svc AgentSvc) SaveAgentPID(pid int) (int, error) {
 }
 
 func (svc AgentSvc) StartAgent() (int, error) {
-	slog.Info("Application RunMode " + DevMode)
+	slog.Info("Application DevMode " + DevMode)
 	var path string = "./api"
 	if DevMode == "off" {
 		p, err := svc.appOS.LookProgram("gitfreshd")
