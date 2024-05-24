@@ -2,6 +2,7 @@ package gitfresh
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -314,6 +315,29 @@ func (gr GitRepositorySvc) SaveRepositories(repos []*GitRepository) (n int, err 
 		return n, err
 	}
 	return n, nil
+}
+
+func (gr GitRepositorySvc) Pull(workdir, repoName, branch string) error {
+	git, err := gr.appOS.LookProgram("git")
+	if err != nil {
+		slog.Error("which git path", "error", err.Error())
+		return err
+	}
+	workspace := filepath.Join(workdir, repoName)
+	out, err := gr.appOS.RunProgram(git, workspace, "pull", "origin", branch)
+	if err != nil {
+		gr.logs.LogAttrs(
+			context.Background(),
+			slog.LevelError,
+			"executing git command",
+			slog.String("error", err.Error()),
+			slog.String("path", git),
+			slog.String("workspace", workspace),
+			slog.String("stdout", string(out)),
+		)
+		return err
+	}
+	return nil
 }
 
 func WebHookSecret() string {
