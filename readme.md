@@ -101,4 +101,4 @@ gitfresh -help
 
 GitFresh creates GitHub webhooks to send notifications of events git-push through an internet tunnel provided by Ngrok that triggers repository updates on the local machine (gitfresh agent)
 
-![Imagen de un gato](https://i.ibb.co/R6kPhmW/gitfresh.png)
+![gitfresh-architecture](https://i.ibb.co/m0RwD9Q/gitfresh.png)
