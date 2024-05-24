@@ -27,6 +27,16 @@ Check installation:
 gitfresh version
 ```
 
+For Windows via [Scoop](https://scoop.sh/):
+
+```bash
+scoop bucket add gitfresh https://github.com/apolo96/scoop-bucket.git
+```
+
+```bash
+scoop install gitfresh
+```
+
 ## Quickstart
 
 GitFresh is a tool powered by Github and Ngrok.
@@ -50,7 +60,7 @@ https://dashboard.ngrok.com/get-started/your-authtoken
 
 After installing GitFresh via Homebrew and getting GitHub and Ngrok tokens, then you can initialize a workspace:
 
-First, go to the working directory that contains the Git repositories and run the following command:
+First, go to the **working directory that contains your Git repositories** and run the following command:
 
 ```bash
 gitfresh config
