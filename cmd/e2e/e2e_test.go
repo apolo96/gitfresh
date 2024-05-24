@@ -20,11 +20,14 @@ var parallelWithPreparation = true
 
 func TestMain(m *testing.M) {
 	if err := prepareMain(); err != nil {
-		fmt.Println("preparing, error:", err.Error())
+		fmt.Println("error preparing tests", err.Error())
 		return
 	}
 	code := m.Run()
-	cleanupMain()
+	if err := cleanupMain(); err != nil {
+		fmt.Println("error cleaning tests", err.Error())
+		return
+	}
 	os.Exit(code)
 }
 
@@ -40,7 +43,6 @@ func prepareMain() error {
 	wg.Add(2)
 	/* Build API */
 	go func() {
-
 		cmd := exec.Command("go", "build", "-o", path, api)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
@@ -51,8 +53,7 @@ func prepareMain() error {
 	}()
 	/* Build CLI */
 	go func() {
-
-		cmd := exec.Command("go", "build", "-ldflags", "-X 'main.devMode=on'", "-o", path, cli)
+		cmd := exec.Command("go", "build", "-ldflags", "-X 'main.devMode=On'", "-o", path, cli)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			errs = append(errs, errors.New("compaling cli "+string(out)))
@@ -73,7 +74,7 @@ func prepareMain() error {
 	return nil
 }
 
-func cleanupMain() {
+func cleanupMain() error {
 	fmt.Println("= CLEANING")
 	var path, _ = os.Getwd()
 	/* Delete API Binary */
@@ -82,7 +83,7 @@ func cleanupMain() {
 	err := os.Remove(apiFile)
 	if err != nil {
 		fmt.Printf("error deleting file %s: %v\n", apiFile, err)
-		return
+		return err
 	}
 	/* Delete CLI Binary */
 	fmt.Println("- DELETE CLI Binary")
@@ -90,15 +91,16 @@ func cleanupMain() {
 	err = os.Remove(cliFile)
 	if err != nil {
 		fmt.Printf("error deleting file %s: %v\n", cliFile, err)
-		return
+		return err
 	}
 	/* Delete App Flatfiles */
 	fmt.Println("- DELETE APP Directory")
 	dir, _ := os.UserHomeDir()
 	if err := os.RemoveAll(filepath.Join(dir, gitfresh.APP_FOLDER)); err != nil {
 		fmt.Printf("error deleting dir %s: %v\n", dir, err)
-		return
+		return err
 	}
+	return nil
 }
 
 func TestVersionCLICommand(t *testing.T) {
