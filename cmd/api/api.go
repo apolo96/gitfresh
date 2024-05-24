@@ -31,7 +31,7 @@ func run() error {
 		return err
 	}
 	defer closer()
-	logger := slog.New(slog.NewJSONHandler(file, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	logger := slog.New(slog.NewJSONHandler(file, &slog.HandlerOptions{Level: slog.LevelInfo}))
 	logger = logger.With("version", "1.0.0")
 	slog.SetDefault(logger)
 	/* loading agent */
