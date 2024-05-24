@@ -6,23 +6,6 @@ import (
 	"path/filepath"
 )
 
-func ListRepository() ([]byte, error) {
-	dir, err := os.UserHomeDir()
-	if err != nil {
-		return []byte{}, err
-	}
-	dir = filepath.Join(dir, APP_FOLDER)
-	flatfile := &FlatFile{
-		Name: APP_REPOS_FILE_NAME,
-		Path: dir,
-	}
-	repos, err := flatfile.Read()
-	if err != nil {
-		return []byte{}, err
-	}
-	return repos, nil
-}
-
 type FlatFiler interface {
 	Write(data []byte) (n int, err error)
 	Read() (n []byte, err error)
