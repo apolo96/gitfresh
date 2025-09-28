@@ -162,6 +162,22 @@ Run unit tests:
 go test -v .
 ```
 
+Run CLI integration tests:
+
+First, go to ```./cli``` config environment variables:
+
+```bash
+cp .env.example .env
+```
+
+Then, edit the `.env` file to add valid environment variables.
+
+Finally, run the tests:
+
+```bash
+go test ./cmd/cli -v
+```
+
 ### Build project
 
 Create indivual binaries for the two main components: 

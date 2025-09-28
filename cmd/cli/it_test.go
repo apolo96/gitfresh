@@ -15,8 +15,7 @@ import (
 )
 
 var path, _ = os.Getwd()
-var cliBinaryPath string = filepath.Join(path, "cli")
-var parallelWithPreparation = true
+var cliBinaryPath = filepath.Join(path, "cli")
 
 func TestMain(m *testing.M) {
 	if err := prepareMain(); err != nil {
@@ -35,10 +34,10 @@ func prepareMain() error {
 	fmt.Println("= PREPARING")
 	/* Compile artifacts (api & cli) */
 	var path, _ = os.Getwd()
-	var source = strings.Replace(path, "e2e", "", 1)
+	parent := filepath.Dir(path)
 	var errs []error
-	cli := filepath.Join(source, "cli")
-	api := filepath.Join(source, "api")
+	cli := filepath.Join(parent, "cli")
+	api := filepath.Join(parent, "api")
 	var wg sync.WaitGroup
 	wg.Add(2)
 	/* Build API */
@@ -104,11 +103,6 @@ func cleanupMain() error {
 }
 
 func TestVersionCLICommand(t *testing.T) {
-	if parallelWithPreparation {
-		t.Skip("Atomic test not supported")
-		t.Parallel()
-		// ToDo: Prepare for Atomic Test
-	}
 	wantErr := false
 	expected := "gitfresh version"
 	args := []string{"version"}
@@ -124,11 +118,6 @@ func TestVersionCLICommand(t *testing.T) {
 
 func TestConfigCommandFlags(t *testing.T) {
 	/* Arrange */
-	if parallelWithPreparation {
-		t.Skip("Atomic test not supported")
-		t.Parallel()
-		// ToDo: Prepare for Atomic Test
-	}
 	err := godotenv.Load()
 	if err != nil {
 		t.Fatal("Error loading .env file")
@@ -162,11 +151,6 @@ func TestConfigCommandFlags(t *testing.T) {
 }
 
 func TestInitCommand(t *testing.T) {
-	if parallelWithPreparation {
-		t.Skip("Atomic test not supported")
-		t.Parallel()
-		// ToDo: Prepare for Atomic Test
-	}
 	wantErr := false
 	args := []string{"init"}
 	expected := "Repositories to Refresh:"
@@ -181,11 +165,6 @@ func TestInitCommand(t *testing.T) {
 }
 
 func TestStatusCommand(t *testing.T) {
-	if parallelWithPreparation {
-		t.Skip("Atomic test not supported")
-		t.Parallel()
-		// ToDo: Prepare for Atomic Test
-	}
 	wantErr := false
 	args := []string{"status"}
 	expected := "GitFresh Agent is running"
@@ -200,11 +179,7 @@ func TestStatusCommand(t *testing.T) {
 }
 
 func TestStopCommand(t *testing.T) {
-	if parallelWithPreparation {
-		t.Skip("Atomic test not supported")
-		t.Parallel()
-		// ToDo: Prepare for Atomic Test
-	}
+
 	wantErr := false
 	args := []string{"stop"}
 	expected := "The agent stopped"
@@ -218,11 +193,6 @@ func TestStopCommand(t *testing.T) {
 	}
 }
 func TestStartCommand(t *testing.T) {
-	if parallelWithPreparation {
-		t.Skip("Atomic test not supported")
-		t.Parallel()
-		// ToDo: Prepare for Atomic Test
-	}
 	wantErr := false
 	args := []string{"start"}
 	expected := "GitFresh Agent is running"
@@ -234,22 +204,4 @@ func TestStartCommand(t *testing.T) {
 	if !strings.Contains(string(output), expected) {
 		t.Errorf("want %q, but got %q", expected, output)
 	}
-}
-
-func TestHappyFlow(t *testing.T) {
-	parallelWithPreparation = false
-	t.Logf("- RUN FLOW WITH parallelWithPreparation: %v", parallelWithPreparation)
-	t.Run("version cli command", TestVersionCLICommand)
-	t.Run("config cli command", TestConfigCommandFlags)
-	t.Run("init cli command", TestInitCommand)
-	t.Run("status cli command", TestStatusCommand)
-	t.Run("stop cli command", TestStopCommand)
-}
-
-func TestStartStopFlow(t *testing.T) {
-	parallelWithPreparation = false
-	t.Logf("- RUN FLOW WITH parallelWithPreparation: %v", parallelWithPreparation)
-	t.Run("config cli command", TestConfigCommandFlags)
-	t.Run("start cli command", TestStartCommand)
-	t.Run("stop cli command", TestStopCommand)
 }
