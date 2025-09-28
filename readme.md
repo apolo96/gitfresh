@@ -102,3 +102,84 @@ gitfresh -help
 GitFresh creates GitHub webhooks to send notifications of events git-push through an internet tunnel provided by Ngrok that triggers repository updates on the local machine (gitfresh agent)
 
 ![gitfresh-architecture](https://i.ibb.co/m0RwD9Q/gitfresh.png)
+ 
+## Developer Guide
+
+Basic steps to start developing on GitFresh: setting up the environment, building the project, running locally, and testing.
+
+### Requirements
+
+- Go 1.22.x o superior
+
+### Getting Started
+
+Clone the repository to your local machine:
+
+```bash
+git clone https://github.com/apolo96/gitfresh.git && cd gitfresh
+```
+
+### Config Environment
+
+Para ejecutar ciertas funcionalidades locales es conveniente exportar variables de entorno:
+
+- `GITHUB_TOKEN` — token con permisos para administrar webhooks (solo para workflows que crean webhooks).
+- `NGROK_TOKEN` — token de ngrok si vas a probar el túnel HTTP.
+
+Ejemplo:
+
+```bash
+export GITHUB_TOKEN=<your_github_token>
+export NGROK_TOKEN=<your_ngrok_token>
+```
+
+### Run Application Locally
+
+Install dependencies:
+
+```bash
+go mod tidy
+```
+
+Start the API server (agent):
+
+```bash
+go run ./cmd/api
+```
+
+Run the CLI by demand or to initialize the configuration:
+
+```bash
+go run ./cmd/cli --help
+go run ./cmd/cli config
+```
+
+### Run Tests
+
+Run unit tests:
+
+```bash
+go test -v .
+```
+
+### Build project
+
+Create indivual binaries for the two main components: 
+
+CLI
+
+```bash
+go build ./cmd/cli
+```
+
+API (agent)
+
+```bash
+go build ./cmd/api
+```
+
+Or build both like a release version with:
+
+```bash
+make build
+```
